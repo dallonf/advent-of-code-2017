@@ -2,6 +2,7 @@
   "name": "advent-of-code-2017",
   "private": true,
   "dependencies": {
+    "@types/lodash": "^4.14.86",
     "chalk": "^2.3.0",
     "lodash": "^4.17.4"
   },
