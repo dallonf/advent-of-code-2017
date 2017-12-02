@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import test, { simpleTest, equalResult } from './test';
 
 const parseInput = (input: string) =>
@@ -49,7 +48,7 @@ test('Part One answer', equalResult(checksum1(TEST_INPUT), 54426));
 const checksum2 = (input: string) =>
   parseInput(input)
     .map(row => {
-      const sortedRow = _.sortBy(row);
+      const sortedRow = [...row].sort();
       // walk backward through the row (higher numbers are more likely to divide cleanly)
       for (let i = sortedRow.length - 1; i > 0; i--) {
         const high = sortedRow[i];
