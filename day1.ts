@@ -1,10 +1,5 @@
 import test, { simpleTest } from './test';
 
-interface ReduceStep {
-  lastDigit: number;
-  sum: number;
-}
-
 const parseDigits = (input: string) =>
   [...input].map((digitStr, i) => {
     const digit = parseInt(digitStr, 10);
@@ -21,14 +16,11 @@ const parseDigits = (input: string) =>
 function captcha1(input: string) {
   const digits = parseDigits(input);
 
-  return digits.reduce(
-    (step: ReduceStep, digit, i) => {
-      const newSum = step.lastDigit === digit ? step.sum + digit : step.sum;
-
-      return { lastDigit: digit, sum: newSum };
-    },
-    { lastDigit: digits[digits.length - 1], sum: 0 }
-  ).sum;
+  return digits.reduce((sum, digit, i, list) => {
+    let lastDigitIndex = i - 1;
+    if (lastDigitIndex < 0) lastDigitIndex = list.length + lastDigitIndex;
+    return list[lastDigitIndex] === digit ? sum + digit : sum;
+  }, 0);
 }
 
 const TEST_INPUT =
