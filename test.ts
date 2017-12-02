@@ -8,4 +8,15 @@ const test = (testname: string, input: boolean) => {
   }
 };
 
+export const simpleTest = <TInput, TResult>(
+  func: (input: TInput) => TResult,
+  input: TInput,
+  expectedOutput: TResult,
+  prefix?: string
+) =>
+  test(
+    `${prefix ? prefix + ' ' : ''}input:${input} = ${expectedOutput}`,
+    func(input) === expectedOutput
+  );
+
 export default test;
