@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import test, { simpleTest, equalResult } from './test';
 
 const parseInput = (input: string) =>
@@ -44,3 +45,35 @@ simpleTest(
   18
 );
 test('Part One answer', equalResult(checksum1(TEST_INPUT), 54426));
+
+const checksum2 = (input: string) =>
+  parseInput(input)
+    .map(row => {
+      const sortedRow = _.sortBy(row);
+      // walk backward through the row (higher numbers are more likely to divide cleanly)
+      for (let i = sortedRow.length - 1; i > 0; i--) {
+        const high = sortedRow[i];
+        // only check numbers that are lower than this
+        // find a number than divides cleanly
+        const low = sortedRow.filter(n => n < high).find(n => high % n === 0);
+        if (low != null) {
+          return high / low;
+        }
+      }
+      throw new Error(
+        `Could not find any numbers in ${JSON.stringify(
+          row
+        )} that are cleanly divisible`
+      );
+    })
+    .reduce((a, b) => a + b);
+
+simpleTest(
+  checksum2,
+  `
+5 9 2 8
+9 4 7 3
+3 8 6 5`,
+  9
+);
+test('Part Two answer', equalResult(checksum2(TEST_INPUT), 333));
