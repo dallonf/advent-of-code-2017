@@ -6,7 +6,7 @@ interface ReduceStep {
 }
 
 function captcha1(input: string) {
-  const digits = [...input].map(digitStr => {
+  const digits = [...input].map((digitStr, i) => {
     const digit = parseInt(digitStr, 10);
     if (Number.isNaN(digit)) {
       throw new Error(
