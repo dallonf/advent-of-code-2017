@@ -14,19 +14,20 @@ const test = (testname: string, result: boolean | TestFailure) => {
   }
 };
 
+export const equalResult = <T>(actual: T, expected: T) =>
+  expected === actual ? true : { failure: `Got ${actual}` };
+
 export const simpleTest = <TInput, TResult>(
   func: (input: TInput) => TResult,
   input: TInput,
   expectedOutput: TResult,
   prefix?: string
-) => {
-  const result = func(input);
+) =>
   test(
     `${prefix ? prefix + ' ' : ''}input:${
       typeof input === 'string' ? input : JSON.stringify(input)
     } = ${expectedOutput}`,
-    result === expectedOutput ? true : { failure: `Got ${result}` }
+    equalResult(func(input), expectedOutput)
   );
-};
 
 export default test;
