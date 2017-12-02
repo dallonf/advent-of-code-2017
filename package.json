@@ -1,0 +1,11 @@
+{
+  "name": "advent-of-code-2017",
+  "private": true,
+  "dependencies": {
+    "chalk": "^2.3.0",
+    "lodash": "^4.17.4"
+  },
+  "devDependencies": {
+    "typescript": "^2.6.2"
+  }
+}
