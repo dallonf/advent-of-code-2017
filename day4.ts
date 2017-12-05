@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import test, { simpleTest, equalResult } from './test';
 import { equal } from 'assert';
+import { readLines } from './util';
 
 const validPassphrase1 = (input: string) => {
   const words = input.split(' ');
@@ -29,7 +30,7 @@ const countValidPassphrases = (
   validPassphase: (input: string) => boolean
 ) => passphrases.filter(validPassphase).length;
 
-const puzzleInput = fs.readFileSync('./day4input.txt', 'utf-8').split(os.EOL);
+const puzzleInput = readLines('./day4input.txt');
 
 console.log('Part One');
 simpleTest(validPassphrase1, 'aa bb cc dd ee', true);
