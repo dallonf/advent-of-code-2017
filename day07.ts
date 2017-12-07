@@ -2,6 +2,7 @@ import test, { equalResult, simpleTest } from './test';
 import * as _ from 'lodash';
 import { EOL } from 'os';
 import { readLines } from './util';
+import { currentId } from 'async_hooks';
 
 interface Node {
   name: string;
@@ -57,9 +58,18 @@ const getRoot = (input: Node[]) => {
 
 const findWeightCorrection = (input: Node[]) => {
   const { nodeByName, root } = buildGraphTools(input);
-  const children = root.supporting.map(n => ({
+  return findWeightCorrectionRecursive(root.name, nodeByName);
+};
+
+const findWeightCorrectionRecursive = (
+  node: string,
+  nodeMap: GraphNodeMap,
+  { imbalance = 0 } = {}
+): { name: string; correctedWeight: number } => {
+  const currentNode = nodeMap.get(node)!;
+  const children = currentNode.supporting.map(n => ({
     name: n,
-    weight: findRecursiveWeight(n, nodeByName),
+    weight: findRecursiveWeight(n, nodeMap),
   }));
   // Count how many children have the same weight
   const childrenWithWeight = new Map<number, string[]>();
@@ -70,11 +80,29 @@ const findWeightCorrection = (input: Node[]) => {
     );
   });
   // Assumption: only one child has the wrong weight
-  const outlierObj = [...childrenWithWeight.entries()].find(
-    c => c[1].length === 1
+  const childrenWithWeightEntries = [...childrenWithWeight.entries()].map(
+    c => ({ weight: c[0], nodeList: c[1] })
   );
-  const outlier = outlierObj && outlierObj[1][0];
-  console.log(outlier);
+  const outlierObj = childrenWithWeightEntries.find(
+    c => c.nodeList.length === 1
+  );
+  const outlier = outlierObj && outlierObj.nodeList[0];
+
+  // If there's an outlier, find out which of its nodes needs to change
+  if (outlier) {
+    const normalWeight = childrenWithWeightEntries.find(
+      c => c.nodeList.length > 1
+    );
+    if (!normalWeight) {
+      throw new Error(`Cannot determine "normal" weight of ${node}'s children`);
+    }
+    return findWeightCorrectionRecursive(outlier, nodeMap, {
+      imbalance: normalWeight.weight - outlierObj!.weight,
+    });
+  } else {
+    // If there is no outlier, than we ourselves are the imbalance!
+    return { name: node, correctedWeight: currentNode.weight + imbalance };
+  }
 };
 
 const findRecursiveWeight = (node: string, nodeMap: GraphNodeMap): number => {
@@ -137,14 +165,25 @@ const parsedExample1 = EXAMPLE_1.split(EOL)
   .map(parseInputLine);
 
 test('getRoot', equalResult(getRoot(parsedExample1), 'tknk'));
-test('Part One Answer', equalResult(getRoot(parsedPuzzleInput), 'qibuqqg'));
+test('Part One answer', equalResult(getRoot(parsedPuzzleInput), 'qibuqqg'));
 
 console.log('Part Two');
 test(
-  'findWeightCorrect',
+  'findWeightCorrection',
   equalResult(
     findWeightCorrection(parsedExample1),
     { name: 'ugml', correctedWeight: 60 },
+    { deepEqual: true }
+  )
+);
+test(
+  'Part Two answer',
+  equalResult(
+    findWeightCorrection(parsedPuzzleInput),
+    {
+      name: 'egbzge',
+      correctedWeight: 1079,
+    },
     { deepEqual: true }
   )
 );
