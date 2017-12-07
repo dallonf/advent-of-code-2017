@@ -6,15 +6,17 @@ import { readLines } from './util';
 interface Node {
   name: string;
   weight: number;
-  supporting: string[] | undefined;
+  supporting: string[];
 }
 
 interface GraphNode extends Node {
   parent: string | null;
 }
 
+type GraphNodeMap = Map<string, GraphNode>;
+
 const lineRegex = /^([a-z]+) \(([0-9]+)\)(?: -> ([a-z]+(?:, [a-z]+)*))?$/;
-const parseInputLine = (line: string) => {
+const parseInputLine = (line: string): Node => {
   const match = line.match(lineRegex);
   if (!match) {
     throw new Error(`Line "${line}" does not match expected format`);
@@ -25,7 +27,7 @@ const parseInputLine = (line: string) => {
     weight: parseInt(weightString, 10),
     supporting: supportingString
       ? supportingString.replace(/ /g, '').split(',')
-      : undefined,
+      : [],
   };
 };
 
@@ -33,7 +35,7 @@ const buildGraphTools = (input: Node[]) => {
   const parentMap = new Map(
     _.flatten(
       input.map(n =>
-        (n.supporting || []).map(parent => [parent, n.name] as [string, string])
+        n.supporting.map(parent => [parent, n.name] as [string, string])
       )
     )
   );
@@ -51,6 +53,40 @@ const buildGraphTools = (input: Node[]) => {
 
 const getRoot = (input: Node[]) => {
   return buildGraphTools(input).root.name;
+};
+
+const findWeightCorrection = (input: Node[]) => {
+  const { nodeByName, root } = buildGraphTools(input);
+  const children = root.supporting.map(n => ({
+    name: n,
+    weight: findRecursiveWeight(n, nodeByName),
+  }));
+  // Count how many children have the same weight
+  const childrenWithWeight = new Map<number, string[]>();
+  children.forEach(c => {
+    childrenWithWeight.set(
+      c.weight,
+      (childrenWithWeight.get(c.weight) || []).concat(c.name)
+    );
+  });
+  // Assumption: only one child has the wrong weight
+  const outlierObj = [...childrenWithWeight.entries()].find(
+    c => c[1].length === 1
+  );
+  const outlier = outlierObj && outlierObj[1][0];
+  console.log(outlier);
+};
+
+const findRecursiveWeight = (node: string, nodeMap: GraphNodeMap): number => {
+  const thisNode = nodeMap.get(node)!;
+  return (
+    thisNode.weight +
+    _.sum(
+      thisNode.supporting.map(childNode =>
+        findRecursiveWeight(childNode, nodeMap)
+      )
+    )
+  );
 };
 
 const EXAMPLE_1 = `
@@ -90,7 +126,7 @@ simpleTest(
   {
     name: 'qoyq',
     weight: 66,
-    supporting: undefined,
+    supporting: [],
   },
   'parseInputLine',
   { deepEqual: true }
@@ -102,3 +138,13 @@ const parsedExample1 = EXAMPLE_1.split(EOL)
 
 test('getRoot', equalResult(getRoot(parsedExample1), 'tknk'));
 test('Part One Answer', equalResult(getRoot(parsedPuzzleInput), 'qibuqqg'));
+
+console.log('Part Two');
+test(
+  'findWeightCorrect',
+  equalResult(
+    findWeightCorrection(parsedExample1),
+    { name: 'ugml', correctedWeight: 60 },
+    { deepEqual: true }
+  )
+);
