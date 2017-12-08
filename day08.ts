@@ -30,10 +30,6 @@ interface Instruction {
   };
 }
 
-interface Output {
-  registers: Map<string, number>;
-}
-
 const parseCommand = (input: string): Instruction['command'] => {
   switch (input) {
     case 'inc':
@@ -87,9 +83,10 @@ const parseInstruction = (line: string): Instruction => {
   return instruction;
 };
 
-const executeInstructions = (instructions: Instruction[]): Output => {
+const executeInstructions = (instructions: Instruction[]) => {
   const registers = new Map<string, number>();
   const getFromRegister = (key: string) => registers.get(key) || 0;
+  let highestValue: number = Number.MIN_SAFE_INTEGER;
   instructions.forEach(instruction => {
     // First, evaluate condition
     const { condition } = instruction;
@@ -99,16 +96,23 @@ const executeInstructions = (instructions: Instruction[]): Output => {
     }
     // Now apply changes
     const command = COMMAND_FNS[instruction.command];
-    registers.set(
-      instruction.register,
-      command(getFromRegister(instruction.register), instruction.parameter)
+    const newValue = command(
+      getFromRegister(instruction.register),
+      instruction.parameter
     );
+    registers.set(instruction.register, newValue);
+    // Check for the highest value
+    if (newValue > highestValue) {
+      highestValue = newValue;
+    }
   });
-  return { registers };
+  return { registers, highestValue };
 };
 const getLargestValueAfterInstructions = (
   instructions: Instruction[]
 ): number => Math.max(...executeInstructions(instructions).registers.values());
+const getLargestValueDuringInstructions = (instructions: Instruction[]) =>
+  executeInstructions(instructions).highestValue;
 
 const SAMPLE_INPUT = `
 b inc 5 if a > 1
@@ -155,4 +159,14 @@ test(
 test(
   'Part One answer',
   equalResult(getLargestValueAfterInstructions(puzzleInstructions), 6012)
+);
+
+console.log('Part Two');
+test(
+  'getLargestValueDuringInstructions',
+  equalResult(getLargestValueDuringInstructions(sampleInstructions), 10)
+);
+test(
+  'Part Two answer',
+  equalResult(getLargestValueDuringInstructions(puzzleInstructions), 6369)
 );
