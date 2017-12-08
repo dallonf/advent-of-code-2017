@@ -1,13 +1,31 @@
 import test, { simpleTest, equalResult } from './test';
-import { OS_EOL } from './util';
+import { OS_EOL, readLines } from './util';
+
+type CommandFn = (registerVal: number, parameter: number) => number;
+const COMMAND_FNS = {
+  increment: ((a, b) => a + b) as CommandFn,
+  decrement: ((a, b) => a - b) as CommandFn,
+};
+type Command = keyof typeof COMMAND_FNS;
+
+type ComparatorFn = (a: number, b: number) => boolean;
+const COMPARATOR_FNS = {
+  '>': ((a, b) => a > b) as ComparatorFn,
+  '<': ((a, b) => a < b) as ComparatorFn,
+  '>=': ((a, b) => a >= b) as ComparatorFn,
+  '==': ((a, b) => a == b) as ComparatorFn,
+  '<=': ((a, b) => a <= b) as ComparatorFn,
+  '!=': ((a, b) => a != b) as ComparatorFn,
+};
+type Comparator = keyof typeof COMPARATOR_FNS;
 
 interface Instruction {
   register: string;
-  command: 'increment' | 'decrement';
+  command: Command;
   parameter: number;
   condition: {
     register: string;
-    comparator: '>' | '<' | '>=' | '==' | '<=' | '!=';
+    comparator: Comparator;
     value: number;
   };
 }
@@ -68,10 +86,29 @@ const parseInstruction = (line: string): Instruction => {
   };
   return instruction;
 };
-// const executeInstructions = (instructions: Instruction[]): Output => {};
-// const getLargestValueAfterInstructions = (
-//   instructions: Instruction[]
-// ): number => {};
+
+const executeInstructions = (instructions: Instruction[]): Output => {
+  const registers = new Map<string, number>();
+  const getFromRegister = (key: string) => registers.get(key) || 0;
+  instructions.forEach(instruction => {
+    // First, evaluate condition
+    const { condition } = instruction;
+    const comparator = COMPARATOR_FNS[condition.comparator];
+    if (!comparator(getFromRegister(condition.register), condition.value)) {
+      return;
+    }
+    // Now apply changes
+    const command = COMMAND_FNS[instruction.command];
+    registers.set(
+      instruction.register,
+      command(getFromRegister(instruction.register), instruction.parameter)
+    );
+  });
+  return { registers };
+};
+const getLargestValueAfterInstructions = (
+  instructions: Instruction[]
+): number => Math.max(...executeInstructions(instructions).registers.values());
 
 const SAMPLE_INPUT = `
 b inc 5 if a > 1
@@ -81,6 +118,7 @@ c inc -20 if c == 10
 `
   .split(OS_EOL)
   .filter(x => x);
+const PUZZLE_INPUT = readLines('./day08input.txt');
 
 console.log('Part One');
 simpleTest(
@@ -109,3 +147,12 @@ simpleTest(
 );
 
 const sampleInstructions = SAMPLE_INPUT.map(parseInstruction);
+const puzzleInstructions = PUZZLE_INPUT.map(parseInstruction);
+test(
+  'getLargestValueAfterInstructions',
+  equalResult(getLargestValueAfterInstructions(sampleInstructions), 1)
+);
+test(
+  'Part One answer',
+  equalResult(getLargestValueAfterInstructions(puzzleInstructions), 6012)
+);
