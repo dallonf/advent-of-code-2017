@@ -1,8 +1,9 @@
 import test, { simpleTest, equalResult } from './test';
+import { OS_EOL } from './util';
 
 interface Instruction {
   register: string;
-  instruction: 'increment' | 'decrement';
+  command: 'increment' | 'decrement';
   parameter: number;
   condition: {
     register: string;
@@ -15,14 +16,14 @@ interface Output {
   registers: Map<string, number>;
 }
 
-const parseInstruction = (input: string): Instruction['instruction'] => {
+const parseCommand = (input: string): Instruction['command'] => {
   switch (input) {
     case 'inc':
       return 'increment';
     case 'dec':
       return 'decrement';
     default:
-      throw new Error(`Unexpected instruction type ${input}`);
+      throw new Error(`Unexpected command type ${input}`);
   }
 };
 const parseComparator = (
@@ -45,7 +46,7 @@ const parseComparator = (
       throw new Error(`Unexpected comparator "${input}"`);
   }
 };
-const parseLine = (line: string): Instruction => {
+const parseInstruction = (line: string): Instruction => {
   const tokens = line.split(' ');
   if (tokens.length !== 7) {
     throw new Error(
@@ -57,7 +58,7 @@ const parseLine = (line: string): Instruction => {
   }
   const instruction = {
     register: tokens[0],
-    instruction: parseInstruction(tokens[1]),
+    command: parseCommand(tokens[1]),
     parameter: parseInt(tokens[2], 10),
     condition: {
       register: tokens[4],
@@ -78,15 +79,16 @@ a inc 1 if b < 5
 c dec -10 if a >= 1
 c inc -20 if c == 10
 `
-  .split('\n')
+  .split(OS_EOL)
   .filter(x => x);
 
+console.log('Part One');
 simpleTest(
-  parseLine,
+  parseInstruction,
   'b inc 5 if a > 1',
   {
     register: 'b',
-    instruction: 'increment',
+    command: 'increment',
     parameter: 5,
     condition: { register: 'a', comparator: '>', value: 1 },
   },
@@ -94,14 +96,16 @@ simpleTest(
   { deepEqual: true }
 );
 simpleTest(
-  parseLine,
+  parseInstruction,
   'c dec -10 if b >= 2',
   {
     register: 'c',
-    instruction: 'decrement',
+    command: 'decrement',
     parameter: -10,
     condition: { register: 'b', comparator: '>=', value: 2 },
   },
   'parseLine',
   { deepEqual: true }
 );
+
+const sampleInstructions = SAMPLE_INPUT.map(parseInstruction);
