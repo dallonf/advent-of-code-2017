@@ -2,12 +2,20 @@ import * as fs from 'fs';
 import test, { equalResult, simpleTest } from './test';
 
 const scoreStream = (input: string) =>
-  parseStream(input, parseGroup, { parentScore: 0, debugIndex: 0 }).score;
+  parseStream(input, parseGroup, {
+    parentScore: 0,
+    debugIndex: 0,
+    garbageCharacters: 0,
+  }).score;
 const getGarbageCharactersFromGroupStream = (input: string) =>
-  parseStream(input, parseGroup, { parentScore: 0, debugIndex: 0 })
-    .garbageCharacters;
+  parseStream(input, parseGroup, {
+    parentScore: 0,
+    debugIndex: 0,
+    garbageCharacters: 0,
+  }).garbageCharacters;
 const getGarbageCharactersFromGarbageStream = (input: string) =>
-  parseStream(input, parseGarbage, { debugIndex: 0 }).garbageCharacters;
+  parseStream(input, parseGarbage, { debugIndex: 0, garbageCharacters: 0 })
+    .garbageCharacters;
 
 interface StreamContext {
   debugIndex: number;
@@ -43,7 +51,11 @@ const parseStream = <
 
 const parseGroup = (
   input: string,
-  context: { parentScore: number; debugIndex: number }
+  context: {
+    parentScore: number;
+    debugIndex: number;
+    garbageCharacters: number;
+  }
 ) => {
   const baseScore = context.parentScore + 1;
   if (input.charAt(0) !== '{') {
@@ -57,13 +69,24 @@ const parseGroup = (
     groupBaseScore: baseScore,
     innerScore: 0,
     debugIndex: context.debugIndex + 1,
+    garbageCharacters: context.garbageCharacters,
   });
 };
 
 const parseGroupBody = (
   input: string,
-  context: { groupBaseScore: number; innerScore: number; debugIndex: number }
-): { score: number; remainingInput: string; debugIndex: number } => {
+  context: {
+    groupBaseScore: number;
+    innerScore: number;
+    debugIndex: number;
+    garbageCharacters: number;
+  }
+): {
+  score: number;
+  remainingInput: string;
+  debugIndex: number;
+  garbageCharacters: number;
+} => {
   const char = input.charAt(0);
   switch (char) {
     case '}':
@@ -72,29 +95,34 @@ const parseGroupBody = (
         score: context.groupBaseScore + context.innerScore,
         remainingInput: input.slice(1),
         debugIndex: context.debugIndex + 1,
+        garbageCharacters: context.garbageCharacters,
       };
     case '{': {
       // new group
       const groupResult = parseGroup(input, {
         parentScore: context.groupBaseScore,
         debugIndex: context.debugIndex,
+        garbageCharacters: context.garbageCharacters,
       });
       // keep parsing
       return parseGroupBody(groupResult.remainingInput, {
         groupBaseScore: context.groupBaseScore,
         innerScore: context.innerScore + groupResult.score,
         debugIndex: groupResult.debugIndex,
+        garbageCharacters: groupResult.garbageCharacters,
       });
     }
     case '<': {
       // garbage
       const garbageResult = parseGarbage(input, {
         debugIndex: context.debugIndex,
+        garbageCharacters: context.garbageCharacters,
       });
       // keep parsing
       return parseGroupBody(garbageResult.remainingInput, {
         ...context,
         debugIndex: garbageResult.debugIndex,
+        garbageCharacters: garbageResult.garbageCharacters,
       });
     }
     case ',':
@@ -110,7 +138,10 @@ const parseGroupBody = (
   }
 };
 
-const parseGarbage = (input: string, context: { debugIndex: number }) => {
+const parseGarbage = (
+  input: string,
+  context: { debugIndex: number; garbageCharacters: number }
+) => {
   if (input.charAt(0) !== '<') {
     throw new Error(
       `${
@@ -120,28 +151,36 @@ const parseGarbage = (input: string, context: { debugIndex: number }) => {
   }
   return parseGarbageBody(input.slice(1), {
     debugIndex: context.debugIndex + 1,
+    garbageCharacters: context.garbageCharacters,
   });
 };
 
 const parseGarbageBody = (
   input: string,
-  context: { debugIndex: number }
-): { remainingInput: string; debugIndex: number } => {
+  context: { debugIndex: number; garbageCharacters: number }
+): {
+  remainingInput: string;
+  debugIndex: number;
+  garbageCharacters: number;
+} => {
   const char = input.charAt(0);
   switch (char) {
     case '>':
       return {
+        garbageCharacters: context.garbageCharacters,
         remainingInput: input.slice(1),
         debugIndex: context.debugIndex + 1,
       };
     case '!':
       // skip the next character
       return parseGarbageBody(input.slice(2), {
+        ...context,
         debugIndex: context.debugIndex + 2,
       });
     default:
       // ignore everything inside garbage
       return parseGarbageBody(input.slice(1), {
+        garbageCharacters: context.garbageCharacters + 1,
         debugIndex: context.debugIndex + 1,
       });
   }
@@ -168,7 +207,14 @@ simpleTest(getGarbageCharactersFromGarbageStream, '<{!>}>', 2);
 simpleTest(getGarbageCharactersFromGarbageStream, '<!!>', 0);
 simpleTest(getGarbageCharactersFromGarbageStream, '<!!!>>', 0);
 simpleTest(getGarbageCharactersFromGarbageStream, '<{o"i!a,<{i<a>', 10);
+simpleTest(getGarbageCharactersFromGroupStream, '{<>}', 0);
+simpleTest(getGarbageCharactersFromGroupStream, '{<random characters>}', 17);
+simpleTest(getGarbageCharactersFromGroupStream, '{<<<<>}', 3);
+simpleTest(getGarbageCharactersFromGroupStream, '{<{!>}>}', 2);
+simpleTest(getGarbageCharactersFromGroupStream, '{<!!>}', 0);
+simpleTest(getGarbageCharactersFromGroupStream, '{<!!!>>}', 0);
+simpleTest(getGarbageCharactersFromGroupStream, '{<{o"i!a,<{i<a>}', 10);
 test(
   'Part Two answer',
-  equalResult(getGarbageCharactersFromGroupStream(PUZZLE_INPUT), 0)
+  equalResult(getGarbageCharactersFromGroupStream(PUZZLE_INPUT), 5101)
 );
