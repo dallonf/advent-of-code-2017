@@ -1,52 +1,70 @@
 import test, { equalResult, simpleTest } from './test';
+import { debug } from 'util';
 
 const scoreStream = (input: string) => {
-  return parseGroup(input, 0, 0).score;
+  try {
+    return parseGroup(input, { parentScore: 0, debugIndex: 0 }).score;
+  } catch (err) {
+    throw new Error(`Error parsing "${input}": ${err.message}`);
+  }
 };
 
-const parseGroup = (input: string, parentScore: number, debugIndex: number) => {
-  const baseScore = parentScore + 1;
-  let cursor = 0;
-  let innerScore = 0;
+const parseGroup = (
+  input: string,
+  context: { parentScore: number; debugIndex: number }
+) => {
+  const baseScore = context.parentScore + 1;
   if (input.charAt(0) !== '{') {
     throw new Error(
       `${
-        debugIndex
+        context.debugIndex
       }: Expected { at beginning of group, instead got ${input.charAt(0)}`
     );
   }
-  ++cursor;
-  while (cursor < input.length) {
-    const char = input.charAt(cursor);
-    switch (char) {
-      case '}':
-        // end group
-        return { score: parentScore + 1 + innerScore, length: cursor };
-      case '{': {
-        // new group
-        const substring = input.slice(cursor);
-        const groupResult = parseGroup(
-          substring,
-          baseScore,
-          debugIndex + cursor
-        );
-        innerScore += groupResult.score;
-        cursor += groupResult.length;
-        break;
-      }
-      case ',':
-        // ignore
-        break;
-      default:
-        throw new Error(
-          `${debugIndex + cursor}: Unrecognized character "${char}"`
-        );
+  return parseGroupBody(input.slice(1), {
+    groupBaseScore: baseScore,
+    innerScore: 0,
+    debugIndex: context.debugIndex + 1,
+  });
+};
+
+const parseGroupBody = (
+  input: string,
+  context: { groupBaseScore: number; innerScore: number; debugIndex: number }
+): { score: number; remainingInput: string; debugIndex: number } => {
+  const char = input.charAt(0);
+  switch (char) {
+    case '}':
+      // end group
+      return {
+        score: context.groupBaseScore + context.innerScore,
+        remainingInput: input.slice(1),
+        debugIndex: context.debugIndex + 1,
+      };
+    case '{': {
+      // new group
+      const groupResult = parseGroup(input, {
+        parentScore: context.groupBaseScore,
+        debugIndex: context.debugIndex,
+      });
+      // keep parsing
+      return parseGroupBody(groupResult.remainingInput, {
+        groupBaseScore: context.groupBaseScore,
+        innerScore: context.innerScore + groupResult.score,
+        debugIndex: groupResult.debugIndex,
+      });
     }
-    ++cursor;
+    case ',':
+      // ignore
+      return parseGroupBody(input.slice(1), {
+        ...context,
+        debugIndex: context.debugIndex + 1,
+      });
+    default:
+      throw new Error(
+        `${context.debugIndex}: Unrecognized character "${char}"`
+      );
   }
-  throw new Error(
-    'Expected } to end group, but was not found by the end of input'
-  );
 };
 
 console.log('Part One');
