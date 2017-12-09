@@ -1,10 +1,33 @@
 import * as fs from 'fs';
 import test, { equalResult, simpleTest } from './test';
 
-const scoreStream = (input: string) => {
+const scoreStream = (input: string) =>
+  parseStream(input, parseGroup, { parentScore: 0, debugIndex: 0 }).score;
+const getGarbageCharactersFromGroupStream = (input: string) =>
+  parseStream(input, parseGroup, { parentScore: 0, debugIndex: 0 })
+    .garbageCharacters;
+const getGarbageCharactersFromGarbageStream = (input: string) =>
+  parseStream(input, parseGarbage, { debugIndex: 0 }).garbageCharacters;
+
+interface StreamContext {
+  debugIndex: number;
+}
+interface ParseResult {
+  remainingInput: string;
+  debugIndex: number;
+}
+
+const parseStream = <
+  TResult extends ParseResult,
+  TContext extends StreamContext
+>(
+  input: string,
+  parseFn: (input: string, context: TContext) => TResult,
+  initialContext: TContext
+) => {
   try {
     const trimmed = input.trim();
-    const result = parseGroup(input, { parentScore: 0, debugIndex: 0 });
+    const result = parseFn(trimmed, initialContext);
     if (result.remainingInput) {
       throw new Error(
         `${result.debugIndex}: Expected end of stream, got "${
@@ -12,7 +35,7 @@ const scoreStream = (input: string) => {
         }"`
       );
     }
-    return result.score;
+    return result;
   } catch (err) {
     throw new Error(`Error parsing "${input}": ${err.message}`);
   }
@@ -136,3 +159,16 @@ simpleTest(scoreStream, '{{<ab>},{<ab>},{<ab>},{<ab>}}', 9);
 simpleTest(scoreStream, '{{<!!>},{<!!>},{<!!>},{<!!>}}', 9);
 simpleTest(scoreStream, '{{<a!>},{<a!>},{<a!>},{<ab>}}', 3);
 test('Part One answer', equalResult(scoreStream(PUZZLE_INPUT), 10616));
+
+console.log('Part Two');
+simpleTest(getGarbageCharactersFromGarbageStream, '<>', 0);
+simpleTest(getGarbageCharactersFromGarbageStream, '<random characters>', 17);
+simpleTest(getGarbageCharactersFromGarbageStream, '<<<<>', 3);
+simpleTest(getGarbageCharactersFromGarbageStream, '<{!>}>', 2);
+simpleTest(getGarbageCharactersFromGarbageStream, '<!!>', 0);
+simpleTest(getGarbageCharactersFromGarbageStream, '<!!!>>', 0);
+simpleTest(getGarbageCharactersFromGarbageStream, '<{o"i!a,<{i<a>', 10);
+test(
+  'Part Two answer',
+  equalResult(getGarbageCharactersFromGroupStream(PUZZLE_INPUT), 0)
+);
