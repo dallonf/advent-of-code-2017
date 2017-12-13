@@ -12,10 +12,13 @@ const HEX_STEPS = {
 };
 type HEX_STEP = keyof typeof HEX_STEPS;
 
-const addToLocation = (
-  location: { x: number; y: number },
-  add: { x?: number; y?: number }
-) => ({ x: location.x + (add.x || 0), y: location.y + (add.y || 0) });
+const addToLocation = (location: Location, add: Partial<Location>) => ({
+  x: location.x + (add.x || 0),
+  y: location.y + (add.y || 0),
+});
+// Manhattan distance, since each hex is exactly 2 hexes away from each of its neighbors
+const manhattanDistance = (location: Location) =>
+  (Math.abs(location.x) + Math.abs(location.y)) / 2;
 
 const distanceFromCenter = (steps: HEX_STEP[]) => {
   const coords = steps.reduce(
@@ -24,8 +27,22 @@ const distanceFromCenter = (steps: HEX_STEP[]) => {
     },
     { x: 0, y: 0 }
   );
-  // Manhattan distance, since each hex is exactly 2 hexes away from each of its neighbors
-  return (Math.abs(coords.x) + Math.abs(coords.y)) / 2;
+  return manhattanDistance(coords);
+};
+
+const maxDistanceFromCenter = (steps: HEX_STEP[]) => {
+  return steps.reduce(
+    (prev, step) => {
+      const newLocation = addToLocation(prev.location, HEX_STEPS[step]);
+      const newDistance = manhattanDistance(newLocation);
+      if (newDistance > prev.maxDistance) {
+        return { location: newLocation, maxDistance: newDistance };
+      } else {
+        return { ...prev, location: newLocation };
+      }
+    },
+    { location: { x: 0, y: 0 }, maxDistance: 0 }
+  ).maxDistance;
 };
 
 const PUZZLE_INPUT = fs
@@ -47,3 +64,6 @@ simpleTest(distanceFromCenter, ['ne', 'ne', 'sw', 'sw'] as HEX_STEP[], 0);
 simpleTest(distanceFromCenter, ['ne', 'ne', 's', 's'] as HEX_STEP[], 2);
 simpleTest(distanceFromCenter, ['se', 'sw', 'se', 'sw', 'sw'] as HEX_STEP[], 3);
 test('Part One answer', equalResult(distanceFromCenter(PUZZLE_INPUT), 808));
+
+console.log('Part Two');
+test('Part Two answer', equalResult(maxDistanceFromCenter(PUZZLE_INPUT), 1556));
