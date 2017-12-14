@@ -161,7 +161,7 @@ const computeIfPacketIsCaught = (
  * So after writing `calculateSafePassage`, which actually revved my CPU fan a bit,
  * I was curious if another approach might be faster.
  *
- * Well, this one certainly isn't. I realized afterward that it was O(n^2), compared to the original's O(n).
+ * Well, this one certainly isn't. I realized afterward that it was O(n!), compared to the original's O(n).
  * And when n is close to 4 million... well... ow.
  *
  * I don't recommend running this function. I'm just keeping it here for the lulz.
