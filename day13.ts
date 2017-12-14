@@ -168,7 +168,6 @@ const computeIfPacketIsCaught = (
  */
 const calculateSafePassageBad = (layerDefinitions: LayerDefinition[]) => {
   for (let i = 0; i < 100000000; i++) {
-    console.log(`!! Trying packet ${i}`);
     if (!computeIfPacketIsCaught(i, layerDefinitions)) {
       return i;
     }
@@ -212,5 +211,5 @@ console.log('Part Two');
 test('Safe Passage', equalResult(calculateSafePassage(EXAMPLE_INPUT), 10));
 test(
   'Part Two Answer',
-  equalResult(calculateSafePassageBad(PUZZLE_INPUT), 3946838)
+  equalResult(calculateSafePassage(PUZZLE_INPUT), 3946838)
 );

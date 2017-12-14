@@ -20,7 +20,7 @@ const hash1 = ({ list, lengths }: { list: number[]; lengths: number[] }) => {
   return knottedList[0] * knottedList[1];
 };
 
-const hash2 = (input: string) => {
+export const hash2 = (input: string) => {
   let cursor = 0;
   let skipSize = 0;
   let knottedList = _.range(0, 256);
