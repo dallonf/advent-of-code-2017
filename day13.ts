@@ -11,6 +11,8 @@ interface LayerState extends LayerDefinition {
   direction: 1 | -1;
 }
 
+type LayerStateArray = (LayerState | undefined)[];
+
 const parseLine = (input: string): LayerDefinition => {
   const match = input.match(/^([0-9]+): ([0-9]+)$/);
   if (!match) throw new Error(`Unexpected format of input line "${input}"`);
@@ -18,7 +20,7 @@ const parseLine = (input: string): LayerDefinition => {
 };
 
 const getSeverityOfTrip = (layerDefinitions: LayerDefinition[]) => {
-  const layers: (LayerState | undefined)[] = [];
+  const layers: LayerStateArray = [];
   layerDefinitions.forEach(ld => {
     layers[ld.depth] = { ...ld, scannerPosition: 0, direction: 1 };
   });
@@ -32,20 +34,8 @@ const getSeverityOfTrip = (layerDefinitions: LayerDefinition[]) => {
         caughtInLayers.push(i);
       }
     }
-    // Update scanners
-    for (let i2 = 0; i2 < layers.length; i2++) {
-      const layer = layers[i2];
-      if (layer) {
-        // Move the scanner
-        layer.scannerPosition += layer.direction;
-        // See if scanner needs to reverse next tick
-        if (layer.direction === 1 && layer.scannerPosition >= layer.range - 1) {
-          layer.direction = -1;
-        } else if (layer.direction === -1 && layer.scannerPosition <= 0) {
-          layer.direction *= -1;
-        }
-      }
-    }
+
+    updateScanners(layers);
   }
   return caughtInLayers
     .map(layerIndex => {
@@ -54,6 +44,22 @@ const getSeverityOfTrip = (layerDefinitions: LayerDefinition[]) => {
       return layer.depth * layer.range;
     })
     .reduce((a, b) => a + b);
+};
+
+const updateScanners = (layers: LayerStateArray) => {
+  for (let i2 = 0; i2 < layers.length; i2++) {
+    const layer = layers[i2];
+    if (layer) {
+      // Move the scanner
+      layer.scannerPosition += layer.direction;
+      // See if scanner needs to reverse next tick
+      if (layer.direction === 1 && layer.scannerPosition >= layer.range - 1) {
+        layer.direction = -1;
+      } else if (layer.direction === -1 && layer.scannerPosition <= 0) {
+        layer.direction *= -1;
+      }
+    }
+  }
 };
 
 const EXAMPLE_INPUT = `
