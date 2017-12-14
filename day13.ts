@@ -132,6 +132,50 @@ const calculateSafePassage = (layerDefinitions: LayerDefinition[]) => {
   throw new Error('Exited after high number of iterations without solution');
 };
 
+const computeIfPacketIsCaught = (
+  delay: number,
+  layerDefinitions: LayerDefinition[]
+): boolean => {
+  const layers = makeLayerStateArray(layerDefinitions);
+  // make a packet
+  let position = 0;
+  for (let tick = 0; tick <= delay + layers.length; tick++) {
+    const packetActive = tick >= delay;
+    // debug(tick, layers, packetActive ? [{ delay, position }] : []);
+    // check if caught
+    if (packetActive) {
+      const layer = layers[position];
+      if (layer && layer.scannerPosition === 0) {
+        return true;
+      }
+    }
+    updateScanners(layers);
+    if (packetActive) {
+      position += 1;
+    }
+  }
+  return false;
+};
+
+/**
+ * So after writing `calculateSafePassage`, which actually revved my CPU fan a bit,
+ * I was curious if another approach might be faster.
+ *
+ * Well, this one certainly isn't. I realized afterward that it was O(n^2), compared to the original's O(n).
+ * And when n is close to 4 million... well... ow.
+ *
+ * I don't recommend running this function. I'm just keeping it here for the lulz.
+ */
+const calculateSafePassageBad = (layerDefinitions: LayerDefinition[]) => {
+  for (let i = 0; i < 100000000; i++) {
+    console.log(`!! Trying packet ${i}`);
+    if (!computeIfPacketIsCaught(i, layerDefinitions)) {
+      return i;
+    }
+  }
+  throw new Error('Exited after high number of iterations without solution');
+};
+
 const updateScanners = (layers: LayerStateArray) => {
   for (let i2 = 0; i2 < layers.length; i2++) {
     const layer = layers[i2];
@@ -168,5 +212,5 @@ console.log('Part Two');
 test('Safe Passage', equalResult(calculateSafePassage(EXAMPLE_INPUT), 10));
 test(
   'Part Two Answer',
-  equalResult(calculateSafePassage(PUZZLE_INPUT), 3946838)
+  equalResult(calculateSafePassageBad(PUZZLE_INPUT), 3946838)
 );
