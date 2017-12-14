@@ -60,18 +60,18 @@ const debug = (
   packetsInFlight: PacketState[]
 ) => {
   // Debug visualization
-  const LENGTH = 2;
+  const length = Math.max(2, tick.toString().length);
   console.log(`Packets in flight at tick ${tick}`, packetsInFlight.length);
   for (let debugLayerI = 0; debugLayerI < layers.length; debugLayerI++) {
     const debugLayer = layers[debugLayerI];
     const packet = packetsInFlight.find(p => p.position === debugLayerI);
     const packetStr =
-      packet && `(${_.padStart(packet!.delay.toString(), LENGTH, ' ')})`;
+      packet && `(${_.padStart(packet!.delay.toString(), length, ' ')})`;
     if (!debugLayer) {
       console.log(
         packet
           ? packetStr
-          : _.range(0, LENGTH + 2)
+          : _.range(0, length + 2)
               .map(() => '.')
               .join('')
       );
@@ -86,7 +86,7 @@ const debug = (
                 positionI === debugLayer.scannerPosition
                   ? debugLayer.direction === 1 ? 'S>' : '<S'
                   : '',
-                LENGTH,
+                length,
                 ' '
               )}]`;
             }
@@ -105,7 +105,7 @@ const calculateSafePassage = (layerDefinitions: LayerDefinition[]) => {
   const layers = makeLayerStateArray(layerDefinitions);
 
   let packetsInFlight: PacketState[] = [];
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 100000000; i++) {
     // make a new packet
     const newPacket: PacketState = {
       delay: i,
@@ -117,7 +117,7 @@ const calculateSafePassage = (layerDefinitions: LayerDefinition[]) => {
       const layer = layers[p.position];
       return !(layer && layer.scannerPosition === 0);
     });
-    debug(i, layers, packetsInFlight);
+    // debug(i, layers, packetsInFlight);
     // check if any packets have made it to the end
     const winner = packetsInFlight.find(p => p.position >= layers.length - 1);
     if (winner) {
@@ -166,4 +166,7 @@ test('Part One Answer', equalResult(getSeverityOfTrip(PUZZLE_INPUT), 1728));
 
 console.log('Part Two');
 test('Safe Passage', equalResult(calculateSafePassage(EXAMPLE_INPUT), 10));
-// test('Part Two Answer', equalResult(calculateSafePassage(PUZZLE_INPUT), 0));
+test(
+  'Part Two Answer',
+  equalResult(calculateSafePassage(PUZZLE_INPUT), 3946838)
+);
