@@ -6,6 +6,8 @@ const now = require('performance-now');
 
 const GENERATOR_A_FACTOR = 16807;
 const GENERATOR_B_FACTOR = 48271;
+const GENERATOR_A_MULTIPLE = 4;
+const GENERATOR_B_MULTIPLE = 8;
 
 function* generator(startingNumber: number, factor: number) {
   let lastValue = startingNumber;
@@ -13,6 +15,20 @@ function* generator(startingNumber: number, factor: number) {
     const nextValue = (lastValue * factor) % 2147483647;
     yield nextValue;
     lastValue = nextValue;
+  }
+}
+
+function* pickyGenerator(
+  startingNumber: number,
+  factor: number,
+  multiple: number
+) {
+  const baseGenerator = generator(startingNumber, factor);
+  while (true) {
+    const nextValue = baseGenerator.next().value;
+    if (nextValue % multiple === 0) {
+      yield nextValue;
+    }
   }
 }
 
@@ -101,15 +117,86 @@ test(
 // const _endStress = now();
 // console.log('stress test', _endStress - _beginStress);
 
-// This takes about a minute to run, though, so maybe don't do it often
-// test(
-//   'Part One answer',
-//   equalResult(
-//     judge(
-//       generator(PUZZLE_INPUT_GENERATOR_A_STARTING_VALUE, GENERATOR_A_FACTOR),
-//       generator(PUZZLE_INPUT_GENERATOR_B_STARTING_VALUE, GENERATOR_B_FACTOR),
-//       40000000
-//     ),
-//     626
-//   )
+// This takes about a minute to run, so comment it out while debugging
+test(
+  'Part One answer',
+  equalResult(
+    judge(
+      generator(PUZZLE_INPUT_GENERATOR_A_STARTING_VALUE, GENERATOR_A_FACTOR),
+      generator(PUZZLE_INPUT_GENERATOR_B_STARTING_VALUE, GENERATOR_B_FACTOR),
+      40000000
+    ),
+    626
+  )
+);
+
+console.log('Part Two');
+test(
+  'generator A',
+  equalResult(
+    take(
+      pickyGenerator(
+        EXAMPLE_GENERATOR_A_STARTING_VALUE,
+        GENERATOR_A_FACTOR,
+        GENERATOR_A_MULTIPLE
+      ),
+      5
+    ),
+    [1352636452, 1992081072, 530830436, 1980017072, 740335192],
+    { deepEqual: true }
+  )
+);
+test(
+  'generator B',
+  equalResult(
+    take(
+      pickyGenerator(
+        EXAMPLE_GENERATOR_B_STARTING_VALUE,
+        GENERATOR_B_FACTOR,
+        GENERATOR_B_MULTIPLE
+      ),
+      5
+    ),
+    [1233683848, 862516352, 1159784568, 1616057672, 412269392],
+    { deepEqual: true }
+  )
+);
+
+// just run it for a bit for performance testing
+// const _beginStress = now();
+// judge(
+//   pickyGenerator(
+//     EXAMPLE_GENERATOR_A_STARTING_VALUE,
+//     GENERATOR_A_FACTOR,
+//     GENERATOR_A_MULTIPLE
+//   ),
+//   pickyGenerator(
+//     EXAMPLE_GENERATOR_B_STARTING_VALUE,
+//     GENERATOR_B_FACTOR,
+//     GENERATOR_B_MULTIPLE
+//   ),
+//   5000
 // );
+// const _endStress = now();
+// console.log('stress test', _endStress - _beginStress);
+
+// This takes about a minute to run, so comment it out while debugging
+test(
+  'Part Two answer',
+  equalResult(
+    judge(
+      pickyGenerator(
+        PUZZLE_INPUT_GENERATOR_A_STARTING_VALUE,
+        GENERATOR_A_FACTOR,
+        GENERATOR_A_MULTIPLE
+      ),
+      pickyGenerator(
+        PUZZLE_INPUT_GENERATOR_B_STARTING_VALUE,
+        GENERATOR_B_FACTOR,
+        GENERATOR_B_MULTIPLE
+      ),
+      5000000
+    ),
+    306
+  )
+);
