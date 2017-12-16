@@ -31,7 +31,7 @@ const take = <T>(generator: IterableIterator<T>, count: number) => {
 const BITMASK = (1 << 16) - 1;
 const getLast16Binary = (number: number) => {
   const last16 = number & BITMASK;
-  const result = last16.toString(2);
+  const result = last16;
   return result;
 };
 
@@ -73,7 +73,12 @@ test(
     { deepEqual: true }
   )
 );
-simpleTest(getLast16Binary, 245556042, '1110001101001010', 'getLast16Binary');
+simpleTest(
+  x => getLast16Binary(x).toString(2),
+  245556042,
+  '1110001101001010',
+  'getLast16Binary'
+);
 test(
   'judge',
   equalResult(
@@ -96,14 +101,15 @@ test(
 // const _endStress = now();
 // console.log('stress test', _endStress - _beginStress);
 
-test(
-  'Part One answer',
-  equalResult(
-    judge(
-      generator(PUZZLE_INPUT_GENERATOR_A_STARTING_VALUE, GENERATOR_A_FACTOR),
-      generator(PUZZLE_INPUT_GENERATOR_B_STARTING_VALUE, GENERATOR_B_FACTOR),
-      40000000
-    ),
-    626
-  )
-);
+// This takes about a minute to run, though, so maybe don't do it often
+// test(
+//   'Part One answer',
+//   equalResult(
+//     judge(
+//       generator(PUZZLE_INPUT_GENERATOR_A_STARTING_VALUE, GENERATOR_A_FACTOR),
+//       generator(PUZZLE_INPUT_GENERATOR_B_STARTING_VALUE, GENERATOR_B_FACTOR),
+//       40000000
+//     ),
+//     626
+//   )
+// );
