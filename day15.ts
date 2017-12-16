@@ -28,8 +28,12 @@ const take = <T>(generator: IterableIterator<T>, count: number) => {
   return result;
 };
 
-const getLast16Binary = (number: number) =>
-  numberToBinary(number, 32).slice(-16);
+const BITMASK = (1 << 16) - 1;
+const getLast16Binary = (number: number) => {
+  const last16 = number & BITMASK;
+  const result = last16.toString(2);
+  return result;
+};
 
 const judge = (
   generatorA: IterableIterator<number>,
@@ -38,17 +42,11 @@ const judge = (
 ) => {
   let matches = 0;
   for (let index = 0; index < iterations; index++) {
-    const compareIterationBegin = now();
-    const a = getLast16Binary(generatorA.next().value);
-    const getOneBinary = now();
-    const b = getLast16Binary(generatorB.next().value);
-    const getTwoBinary = now();
+    const aNumber = generatorA.next().value;
+    const a = getLast16Binary(aNumber);
+    const bNumber = generatorB.next().value;
+    const b = getLast16Binary(bNumber);
     if (a === b) matches += 1;
-    const compare = now();
-    const compareIterationEnd = now();
-    // console.log('getBinary', getOneBinary - compareIterationBegin);
-    // console.log('getBinary', getTwoBinary - getOneBinary);
-    console.log('one iteration', compareIterationEnd - compareIterationBegin);
   }
   return matches;
 };
@@ -89,20 +87,23 @@ test(
 );
 
 // just run it for a bit for performance testing
-judge(
-  generator(EXAMPLE_GENERATOR_A_STARTING_VALUE, GENERATOR_A_FACTOR),
-  generator(EXAMPLE_GENERATOR_B_STARTING_VALUE, GENERATOR_B_FACTOR),
-  100
-);
-
-// test(
-//   'judge',
-//   equalResult(
-//     judge(
-//       generator(PUZZLE_INPUT_GENERATOR_A_STARTING_VALUE, GENERATOR_A_FACTOR),
-//       generator(PUZZLE_INPUT_GENERATOR_B_STARTING_VALUE, GENERATOR_B_FACTOR),
-//       40000000
-//     ),
-//     0
-//   )
+// const _beginStress = now();
+// judge(
+//   generator(EXAMPLE_GENERATOR_A_STARTING_VALUE, GENERATOR_A_FACTOR),
+//   generator(EXAMPLE_GENERATOR_B_STARTING_VALUE, GENERATOR_B_FACTOR),
+//   40000
 // );
+// const _endStress = now();
+// console.log('stress test', _endStress - _beginStress);
+
+test(
+  'Part One answer',
+  equalResult(
+    judge(
+      generator(PUZZLE_INPUT_GENERATOR_A_STARTING_VALUE, GENERATOR_A_FACTOR),
+      generator(PUZZLE_INPUT_GENERATOR_B_STARTING_VALUE, GENERATOR_B_FACTOR),
+      40000000
+    ),
+    626
+  )
+);
