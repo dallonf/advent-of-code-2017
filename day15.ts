@@ -1,7 +1,5 @@
 import * as _ from 'lodash';
 import test, { simpleTest, equalResult } from './test';
-import { Buffer } from 'buffer';
-import { numberToBinary } from './util';
 const now = require('performance-now');
 
 const GENERATOR_A_FACTOR = 16807;
