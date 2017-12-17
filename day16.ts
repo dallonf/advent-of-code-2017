@@ -121,9 +121,11 @@ const danceALot = (
   startingDancers = DANCERS,
   { detectPatterns = true } = {}
 ) => {
+  const pattern = [];
   const memoTable = new Map<string, string[]>();
   let dancers = startingDancers;
-  for (let index = 0; index < iterations; index++) {
+  let iteration;
+  for (iteration = 0; iteration < iterations; iteration++) {
     let result = memoTable.get(dancers.join(''));
     if (!result) {
       result = executeMoves(moves, dancers);
@@ -131,10 +133,20 @@ const danceALot = (
       multiDanceCacheStas.misses++;
     } else {
       multiDanceCacheStas.hits++;
+      if (detectPatterns) {
+        dancers = result;
+        break;
+      }
     }
     dancers = result;
+    if (detectPatterns) pattern.push(dancers);
   }
-  return dancers;
+  if (!detectPatterns) {
+    return dancers;
+  } else {
+    // simulate the rest of the dance
+    return pattern[(iterations - 1) % pattern.length];
+  }
 };
 
 const EXAMPLE_DANCERS = DANCERS.slice(0, 5);
@@ -190,7 +202,7 @@ test(
 console.log('Part Two');
 const PUZZLE_ITERATIONS = 1000000000;
 
-const SAMPLE_ITERATIONS = 400;
+const SAMPLE_ITERATIONS = 423;
 const _sampleBegin = now();
 const result = danceALot(PUZZLE_INPUT, SAMPLE_ITERATIONS, DANCERS);
 const _sampleEnd = now();
@@ -207,13 +219,19 @@ const normalResult = danceALot(PUZZLE_INPUT, SAMPLE_ITERATIONS, DANCERS, {
   detectPatterns: false,
 });
 test(
-  'make sure it gets the right result when detecting patterns',
-  equalResult(result, normalResult, { deepEqual: true })
+  `make sure it gets the right result when detecting patterns: ${normalResult.join(
+    ''
+  )}`,
+  equalResult(result.join(''), normalResult.join(''), { deepEqual: true })
 );
 
-// test(
-//   'Part Two answer',
-//   equalResult(danceALot(PUZZLE_INPUT, PUZZLE_ITERATIONS).join(''), '', {
-//     deepEqual: true,
-//   })
-// );
+test(
+  'Part Two answer',
+  equalResult(
+    danceALot(PUZZLE_INPUT, PUZZLE_ITERATIONS).join(''),
+    'cbolhmkgfpenidaj',
+    {
+      deepEqual: true,
+    }
+  )
+);
