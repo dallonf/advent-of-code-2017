@@ -118,7 +118,8 @@ const multiDanceCacheStas = {
 const danceALot = (
   moves: Move[],
   iterations: number,
-  startingDancers = DANCERS
+  startingDancers = DANCERS,
+  { detectPatterns = true } = {}
 ) => {
   const memoTable = new Map<string, string[]>();
   let dancers = startingDancers;
@@ -129,8 +130,8 @@ const danceALot = (
       memoTable.set(dancers.join(''), result);
       multiDanceCacheStas.misses++;
     } else {
+      multiDanceCacheStas.hits++;
     }
-    multiDanceCacheStas.hits++;
     dancers = result;
   }
   return dancers;
@@ -189,9 +190,9 @@ test(
 console.log('Part Two');
 const PUZZLE_ITERATIONS = 1000000000;
 
-const SAMPLE_ITERATIONS = 200;
+const SAMPLE_ITERATIONS = 400;
 const _sampleBegin = now();
-danceALot(PUZZLE_INPUT, SAMPLE_ITERATIONS, DANCERS);
+const result = danceALot(PUZZLE_INPUT, SAMPLE_ITERATIONS, DANCERS);
 const _sampleEnd = now();
 const _sampleLength = _sampleEnd - _sampleBegin;
 console.log('Performance sample:', _sampleLength);
@@ -199,9 +200,16 @@ console.log(
   'Estimated runtime of entire solution',
   `${_sampleLength * (PUZZLE_ITERATIONS / SAMPLE_ITERATIONS) / 60000} minutes`
 );
-
 console.log('executeMove', executeMoveCacheStats);
 console.log('multiDance', multiDanceCacheStas);
+
+const normalResult = danceALot(PUZZLE_INPUT, SAMPLE_ITERATIONS, DANCERS, {
+  detectPatterns: false,
+});
+test(
+  'make sure it gets the right result when detecting patterns',
+  equalResult(result, normalResult, { deepEqual: true })
+);
 
 // test(
 //   'Part Two answer',
