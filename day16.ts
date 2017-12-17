@@ -1,7 +1,6 @@
 import test, { simpleTest, equalResult } from './test';
 import * as _ from 'lodash';
 import { readLines } from './util';
-const now = require('performance-now');
 
 const DANCERS = _.range(16).map(i => String.fromCharCode(97 + i));
 
@@ -199,19 +198,20 @@ test(
   })
 );
 
+/*
+I confess - I cheated a bit on this one. After optimizing an estimated runtime down to 1000 hours (!),
+I gave up and went to Reddit to see if anybody else was having trouble with this. Apparently everybody
+just knew you weren't supposed to actually run the simulation a billion times. Which makes sense in retrospect.
+Seeing some people talking about memoization got me on the right track.
+
+There's some weirdness going on here - sometimes the script seems to run non-deterministically. I don't know why
+and I don't really have time to find out.
+*/
 console.log('Part Two');
 const PUZZLE_ITERATIONS = 1000000000;
 
 const SAMPLE_ITERATIONS = 423;
-const _sampleBegin = now();
 const result = danceALot(PUZZLE_INPUT, SAMPLE_ITERATIONS, DANCERS);
-const _sampleEnd = now();
-const _sampleLength = _sampleEnd - _sampleBegin;
-console.log('Performance sample:', _sampleLength);
-console.log(
-  'Estimated runtime of entire solution',
-  `${_sampleLength * (PUZZLE_ITERATIONS / SAMPLE_ITERATIONS) / 60000} minutes`
-);
 console.log('executeMove', executeMoveCacheStats);
 console.log('multiDance', multiDanceCacheStas);
 
