@@ -1,6 +1,7 @@
 import test, { simpleTest, equalResult } from './test';
 import * as _ from 'lodash';
 import { readLines } from './util';
+const now = require('performance-now');
 
 const DANCERS = _.range(16).map(i => String.fromCharCode(97 + i));
 
@@ -86,6 +87,18 @@ const executeMove = (move: Move, dancers: string[]): string[] => {
 const executeMoves = (moves: Move[], startingDancers = DANCERS) =>
   moves.reduce((dancers, move) => executeMove(move, dancers), startingDancers);
 
+const danceALot = (
+  moves: Move[],
+  iterations: number,
+  startingDancers = DANCERS
+) => {
+  let dancers = startingDancers;
+  for (let index = 0; index < iterations; index++) {
+    dancers = executeMoves(moves, dancers);
+  }
+  return dancers;
+};
+
 const EXAMPLE_DANCERS = DANCERS.slice(0, 5);
 const PUZZLE_INPUT = readLines('./day16input.txt')[0]
   .split(',')
@@ -135,3 +148,24 @@ test(
     deepEqual: true,
   })
 );
+
+console.log('Part Two');
+const PUZZLE_ITERATIONS = 1000000000;
+
+const SAMPLE_ITERATIONS = 10;
+const _sampleBegin = now();
+danceALot(PUZZLE_INPUT, SAMPLE_ITERATIONS, DANCERS);
+const _sampleEnd = now();
+const _sampleLength = _sampleEnd - _sampleBegin;
+console.log('Performance sample:', _sampleLength);
+console.log(
+  'Estimated runtime of entire solution',
+  `${_sampleLength * (PUZZLE_ITERATIONS / SAMPLE_ITERATIONS) / 60000} minutes`
+);
+
+// test(
+//   'Part Two answer',
+//   equalResult(danceALot(PUZZLE_INPUT, PUZZLE_ITERATIONS).join(''), '', {
+//     deepEqual: true,
+//   })
+// );
