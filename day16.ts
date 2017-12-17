@@ -6,17 +6,20 @@ const now = require('performance-now');
 const DANCERS = _.range(16).map(i => String.fromCharCode(97 + i));
 
 interface SpinMove {
+  moveString: string;
   type: 'spin';
   number: number;
 }
 
 interface ExchangeMove {
+  moveString: string;
   type: 'exchange';
   positionA: number;
   positionB: number;
 }
 
 interface PartnerMove {
+  moveString: string;
   type: 'partner';
   dancerA: string;
   dancerB: string;
@@ -29,6 +32,7 @@ const parseMove = (moveString: string): Move => {
     const match = moveString.match(/^s([0-9]+)$/);
     if (!match) throw new Error(`Invalid spin move ${moveString}`);
     return {
+      moveString,
       type: 'spin',
       number: parseInt(match[1], 10),
     };
@@ -36,6 +40,7 @@ const parseMove = (moveString: string): Move => {
     const match = moveString.match(/^x([0-9]+)\/([0-9]+)$/);
     if (!match) throw new Error(`Invalid exchange move ${moveString}`);
     return {
+      moveString,
       type: 'exchange',
       positionA: parseInt(match[1], 10),
       positionB: parseInt(match[2], 10),
@@ -44,6 +49,7 @@ const parseMove = (moveString: string): Move => {
     const match = moveString.match(/^p([a-z])\/([a-z])$/);
     if (!match) throw new Error(`Invalid partner move ${moveString}`);
     return {
+      moveString,
       type: 'partner',
       dancerA: match[1],
       dancerB: match[2],
@@ -53,7 +59,7 @@ const parseMove = (moveString: string): Move => {
   }
 };
 
-const executeMove = (move: Move, dancers: string[]): string[] => {
+const _executeMove = (move: Move, dancers: string[]): string[] => {
   switch (move.type) {
     case 'spin': {
       const movingDancers = dancers.slice(-move.number);
@@ -84,17 +90,48 @@ const executeMove = (move: Move, dancers: string[]): string[] => {
   }
 };
 
+const executeMoveCacheStats = {
+  hits: 0,
+  misses: 0,
+};
+const executeMoveMemoTable = new Map<string, string[]>();
+const executeMove: typeof _executeMove = (move, dancers) => {
+  const key = `${dancers.join('')}_${move.moveString}`;
+  let result = executeMoveMemoTable.get(key);
+  if (!result) {
+    executeMoveCacheStats.misses++;
+    result = _executeMove(move, dancers);
+    executeMoveMemoTable.set(key, result);
+  } else {
+    executeMoveCacheStats.hits++;
+  }
+  return result;
+};
+
 const executeMoves = (moves: Move[], startingDancers = DANCERS) =>
   moves.reduce((dancers, move) => executeMove(move, dancers), startingDancers);
 
+const multiDanceCacheStas = {
+  hits: 0,
+  misses: 0,
+};
 const danceALot = (
   moves: Move[],
   iterations: number,
   startingDancers = DANCERS
 ) => {
+  const memoTable = new Map<string, string[]>();
   let dancers = startingDancers;
   for (let index = 0; index < iterations; index++) {
-    dancers = executeMoves(moves, dancers);
+    let result = memoTable.get(dancers.join(''));
+    if (!result) {
+      result = executeMoves(moves, dancers);
+      memoTable.set(dancers.join(''), result);
+      multiDanceCacheStas.misses++;
+    } else {
+    }
+    multiDanceCacheStas.hits++;
+    dancers = result;
   }
   return dancers;
 };
@@ -152,7 +189,7 @@ test(
 console.log('Part Two');
 const PUZZLE_ITERATIONS = 1000000000;
 
-const SAMPLE_ITERATIONS = 10;
+const SAMPLE_ITERATIONS = 200;
 const _sampleBegin = now();
 danceALot(PUZZLE_INPUT, SAMPLE_ITERATIONS, DANCERS);
 const _sampleEnd = now();
@@ -162,6 +199,9 @@ console.log(
   'Estimated runtime of entire solution',
   `${_sampleLength * (PUZZLE_ITERATIONS / SAMPLE_ITERATIONS) / 60000} minutes`
 );
+
+console.log('executeMove', executeMoveCacheStats);
+console.log('multiDance', multiDanceCacheStas);
 
 // test(
 //   'Part Two answer',
