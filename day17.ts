@@ -19,8 +19,18 @@ const getNumberAfterLastInsertion = (
   steps: number
 ): number => {
   return getNumberAfter(iterations, iterations, steps);
-  // const spinLockResult = spinLock(iterations, steps);
-  // return spinLockResult.buffer[spinLockResult.insertion + 1];
+};
+
+const getNumberAfterNaive = (
+  targetNumber: number,
+  iterations: number,
+  steps: number
+) => {
+  const { buffer } = spinLock(iterations, steps);
+  for (let index = 0; index < buffer.length; index++) {
+    const number = buffer[index];
+    if (number === targetNumber) return buffer[index + 1];
+  }
 };
 
 const getNumberAfter = (
