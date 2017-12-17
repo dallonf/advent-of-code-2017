@@ -4,12 +4,6 @@ import { readLines } from './util';
 const now = require('performance-now');
 
 const DANCERS = _.range(16).map(i => String.fromCharCode(97 + i));
-const PERFORMANCE_MEASUREMENTS: { [key: string]: number[] } = {};
-
-const measure = (key: string, number: number) => {
-  if (!PERFORMANCE_MEASUREMENTS[key]) PERFORMANCE_MEASUREMENTS[key] = [];
-  PERFORMANCE_MEASUREMENTS[key].push(number);
-};
 
 interface SpinMove {
   type: 'spin';
@@ -60,56 +54,47 @@ const parseMove = (moveString: string): Move => {
 };
 
 const executeMove = (move: Move, dancers: string[]): string[] => {
-  // const _beginSingleMove = now();
-  // try {
   switch (move.type) {
     case 'spin': {
-      const sub = dancers.splice(dancers.length - move.number, move.number);
-      dancers.splice(0, 0, ...sub);
-      break;
+      const movingDancers = dancers.slice(-move.number);
+      return [...movingDancers, ...dancers.slice(0, -move.number)];
     }
     case 'exchange': {
-      const tmp = dancers[move.positionA];
-      dancers[move.positionA] = dancers[move.positionB];
-      dancers[move.positionB] = tmp;
-      break;
+      return dancers.map((val, i) => {
+        if (i === move.positionA) {
+          return dancers[move.positionB];
+        } else if (i === move.positionB) {
+          return dancers[move.positionA];
+        } else {
+          return val;
+        }
+      });
     }
     case 'partner': {
-      const indexA = dancers.indexOf(move.dancerA);
-      const indexB = dancers.indexOf(move.dancerB);
-      dancers[indexA] = move.dancerB;
-      dancers[indexB] = move.dancerA;
-      break;
+      return dancers.map(val => {
+        if (val === move.dancerA) {
+          return move.dancerB;
+        } else if (val === move.dancerB) {
+          return move.dancerA;
+        } else {
+          return val;
+        }
+      });
     }
   }
-  return dancers;
-  // } finally {
-  //   const _endSingleMove = now();
-  //   measure('singleMove', _endSingleMove - _beginSingleMove);
-  //   measure(`singleMove_${move.type}`, _endSingleMove - _beginSingleMove);
-  // }
 };
 
-const executeMoves = (moves: Move[], startingDancers = [...DANCERS]) => {
-  // const _beginExecuteMoves = now();
-  let dancerState = startingDancers;
-  for (let index = 0; index < moves.length; index++) {
-    const move = moves[index];
-    executeMove(move, dancerState);
-  }
-  // const _endExecuteMoves = now();
-  // measure('executeMoves', _endExecuteMoves - _beginExecuteMoves);
-  return dancerState;
-};
+const executeMoves = (moves: Move[], startingDancers = DANCERS) =>
+  moves.reduce((dancers, move) => executeMove(move, dancers), startingDancers);
 
 const danceALot = (
   moves: Move[],
   iterations: number,
   startingDancers = DANCERS
 ) => {
-  let dancers = [...startingDancers];
+  let dancers = startingDancers;
   for (let index = 0; index < iterations; index++) {
-    executeMoves(moves, dancers);
+    dancers = executeMoves(moves, dancers);
   }
   return dancers;
 };
@@ -121,7 +106,7 @@ const PUZZLE_INPUT = readLines('./day16input.txt')[0]
 
 console.log('Part One');
 const singleExampleMove = (move: string, dancers: string[]) =>
-  executeMove(parseMove(move), [...dancers]);
+  executeMove(parseMove(move), dancers);
 
 simpleTest(
   x => singleExampleMove(x, EXAMPLE_DANCERS),
@@ -151,7 +136,7 @@ simpleTest(
   }
 );
 simpleTest(
-  moves => executeMoves(moves.map(parseMove), [...EXAMPLE_DANCERS]),
+  moves => executeMoves(moves.map(parseMove), EXAMPLE_DANCERS),
   ['s1', 'x3/4', 'pe/b'],
   [...'baedc'],
   undefined,
@@ -167,7 +152,7 @@ test(
 console.log('Part Two');
 const PUZZLE_ITERATIONS = 1000000000;
 
-const SAMPLE_ITERATIONS = 100;
+const SAMPLE_ITERATIONS = 10;
 const _sampleBegin = now();
 danceALot(PUZZLE_INPUT, SAMPLE_ITERATIONS, DANCERS);
 const _sampleEnd = now();
@@ -177,27 +162,6 @@ console.log(
   'Estimated runtime of entire solution',
   `${_sampleLength * (PUZZLE_ITERATIONS / SAMPLE_ITERATIONS) / 60000} minutes`
 );
-const avg = (input: number[] | undefined) =>
-  input ? input.reduce((a, b) => a + b) / input.length : 'N/A';
-console.log('singleMove avg:', avg(PERFORMANCE_MEASUREMENTS['singleMove']));
-// console.log(
-//   'singleMove_spin:',
-//   avg(PERFORMANCE_MEASUREMENTS['singleMove_spin'])
-// );
-// console.log(
-//   'singleMove_exchange:',
-//   avg(PERFORMANCE_MEASUREMENTS['singleMove_exchange'])
-// );
-// console.log(
-//   'singleMove_partner:',
-//   avg(PERFORMANCE_MEASUREMENTS['singleMove_partner'])
-// );
-const expectedExecutionBasedOnSingleMove =
-  (avg(PERFORMANCE_MEASUREMENTS['singleMove']) as number) * PUZZLE_INPUT.length;
-const executeMovesOverhead =
-  (avg(PERFORMANCE_MEASUREMENTS['executeMoves']) as number) -
-  expectedExecutionBasedOnSingleMove;
-console.log('Overhead:', executeMovesOverhead);
 
 // test(
 //   'Part Two answer',
