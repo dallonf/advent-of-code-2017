@@ -1,5 +1,5 @@
 import test, { simpleTest, equalResult } from './test';
-import { OS_EOL, readLines } from './util';
+import { readLines } from './util';
 
 type GridCell =
   | { type: 'empty' }
@@ -75,33 +75,27 @@ const navigate = (input: GridCell[][]) => {
       direction = { x: target.x - x, y: target.y - y };
     } else if (cell.type === 'empty') {
       // We've reached the end
-      return letters;
+      return { letters, steps: i };
     }
 
     x += direction.x;
     y += direction.y;
   }
+  throw new Error('Timed out');
 };
+const getLetters = (input: GridCell[][]) => navigate(input).letters;
+const getSteps = (input: GridCell[][]) => navigate(input).steps;
 
-console.log('Part One');
-
-const EXAMPLE_INPUT = parseInput(
-  `
-     |          
-     |  +--+    
-     A  |  C    
- F---|----E|--+ 
-     |  |  |  D 
-     +B-+  +--+ 
-`
-    .split(OS_EOL)
-    .filter(x => x)
-);
-
+const EXAMPLE_INPUT = parseInput(readLines('./day19exampleinput.txt'));
 const PUZZLE_INPUT = parseInput(readLines('./day19input.txt'));
 
+console.log('Part One');
 test(
   'Example navigation = ABCDEF',
-  equalResult(navigate(EXAMPLE_INPUT), 'ABCDEF')
+  equalResult(getLetters(EXAMPLE_INPUT), 'ABCDEF')
 );
-test('Part One answer', equalResult(navigate(PUZZLE_INPUT), 'LIWQYKMRP'));
+test('Part One answer', equalResult(getLetters(PUZZLE_INPUT), 'LIWQYKMRP'));
+
+console.log('Part Two');
+test('Example navigation = 38', equalResult(getSteps(EXAMPLE_INPUT), 38));
+test('Part Two answer', equalResult(getSteps(PUZZLE_INPUT), 16764));
