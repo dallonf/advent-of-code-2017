@@ -5,7 +5,7 @@ import { OS_EOL, readLines } from './util';
 type Grid = boolean[][];
 interface Rule {
   sourceRule: string;
-  output: string;
+  output: Grid;
   matchPatterns: Set<string>;
 }
 
@@ -34,10 +34,10 @@ const parseRule = (input: string): Rule => {
   const match = input.match(/^([.#/]+) => ([.#/]+)$/);
   if (!match) throw new Error(`Could not parse rule "${input}"`);
   const sourceRule = match[1];
-  const output = match[2];
+  const output = patternToGrid(match[2]);
   const matchPatterns = new Set<string>();
-  matchPatterns.add(sourceRule);
 
+  matchPatterns.add(sourceRule);
   let rotatedGrid = patternToGrid(sourceRule);
   for (let rotateCount = 1; rotateCount < 4; rotateCount++) {
     rotatedGrid = rotateGrid(rotatedGrid);
@@ -55,16 +55,23 @@ const patternMatches = (input: string, rule: Rule): boolean =>
   rule.matchPatterns.has(input);
 
 const pixelsOnAfterIterations = (rules: Rule[], iterations: number): number => {
+  const ruleMap = new Map<string, Rule>();
+  rules.forEach(rule => {
+    rule.matchPatterns.forEach(matchPattern => {
+      ruleMap.set(matchPattern, rule);
+    });
+  });
+
   let currentState = patternToGrid(STARTING_PATTERN);
   for (let index = 0; index < iterations; index++) {
-    currentState = gridIteration(currentState, rules);
+    currentState = gridIteration(currentState, ruleMap);
   }
   return currentState
     .map(row => row.map(pixel => Number(pixel ? 1 : 0)).reduce((a, b) => a + b))
     .reduce((a, b) => a + b);
 };
 
-const gridIteration = (gridState: Grid, rules: Rule[]): Grid => {
+const gridIteration = (gridState: Grid, ruleMap: Map<string, Rule>): Grid => {
   const size = gridState[0].length;
   let numSquares: number, squareSize: number;
   if (size % 2 === 0) {
@@ -77,46 +84,38 @@ const gridIteration = (gridState: Grid, rules: Rule[]): Grid => {
     throw new Error(`Grid size ${size} not divisible by 2 or 3`);
   }
 
-  const sourceSquares = _.flatten(
-    _.range(numSquares).map(x =>
-      _.range(numSquares).map(y => {
-        const offsetX = x * squareSize;
-        const offsetY = y * squareSize;
-        return {
-          x,
-          y,
-          square: _.range(squareSize).map(squareX =>
-            _.range(squareSize).map(squareY =>
-              getValue(gridState, offsetX + squareX, offsetY + squareY)
-            )
-          ) as Grid,
-        };
-      })
-    )
-  );
-
-  const outputSquares = sourceSquares.map(square => {
-    const pattern = gridToPattern(square.square);
-    const matchingRule = rules.find(rule => patternMatches(pattern, rule));
-    if (!matchingRule) {
-      throw new Error(`No matching rule for grid square "${pattern}"`);
-    }
-    return { ...square, square: patternToGrid(matchingRule.output) };
-  });
-
+  // split into squares, match rules, and write new grid
   const newSquareSize = squareSize + 1;
-  const newGrid = _.range(numSquares * newSquareSize).map(squareX =>
-    _.range(numSquares * newSquareSize).map(() => false)
-  );
-  outputSquares.forEach(square => {
-    const offsetX = square.x * newSquareSize;
-    const offsetY = square.y * newSquareSize;
-    square.square.forEach((row, squareX) =>
-      row.forEach((value, squareY) => {
-        newGrid[offsetY + squareY][offsetX + squareX] = value;
-      })
-    );
-  });
+  const newGrid: Grid = [];
+  for (let x = 0; x < numSquares; x++) {
+    for (let y = 0; y < numSquares; y++) {
+      const offsetX = x * squareSize;
+      const offsetY = y * squareSize;
+      const square: Grid = _.range(squareSize).map(squareX =>
+        _.range(squareSize).map(squareY =>
+          getValue(gridState, offsetX + squareX, offsetY + squareY)
+        )
+      );
+
+      const pattern = gridToPattern(square);
+      const matchingRule = ruleMap.get(pattern);
+      if (!matchingRule) {
+        throw new Error(`No matching rule for grid square "${pattern}"`);
+      }
+      const newSquare = matchingRule.output;
+
+      const newOffsetX = x * newSquareSize;
+      const newOffsetY = y * newSquareSize;
+      newSquare.forEach((row, squareX) =>
+        row.forEach((value, squareY) => {
+          const gridRow =
+            newGrid[newOffsetY + squareY] ||
+            (newGrid[newOffsetY + squareY] = []);
+          gridRow[newOffsetX + squareX] = value;
+        })
+      );
+    }
+  }
 
   return newGrid;
 };
@@ -164,4 +163,11 @@ test(
 test(
   'Part One answer',
   equalResult(pixelsOnAfterIterations(puzzleRules, 5), 190)
+);
+
+console.log('Part Two');
+
+test(
+  'Part One answer',
+  equalResult(pixelsOnAfterIterations(puzzleRules, 18), 190)
 );
