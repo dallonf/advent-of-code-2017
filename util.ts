@@ -15,18 +15,7 @@ export const readLines = (path: string, { filterNulls = true } = {}) => {
 };
 
 export const numberToBinary = (number: number, bits: number) => {
-  const places = _.range(bits - 1, -1, -1).map(i => Math.pow(2, i));
-  let remainingValue = number;
-  return places
-    .map(place => {
-      if (remainingValue >= place) {
-        remainingValue -= place;
-        return '1';
-      } else {
-        return '0';
-      }
-    })
-    .join('');
+  return _.padStart(number.toString(2).slice(-bits), bits, '0');
 };
 
 export const hexToBinary = (hex: string) =>
