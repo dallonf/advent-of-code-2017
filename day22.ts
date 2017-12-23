@@ -4,12 +4,19 @@ import { OS_EOL, readLines } from './util';
 
 // This one is kind of sloppy because I didn't have a lot of time
 
+enum NodeState {
+  CLEAN,
+  WEAKENED,
+  INFECTED,
+  FLAGGED,
+}
+
 type Grid = {
   minX: number;
   maxX: number;
   minY: number;
   maxY: number;
-  map: Map<number, Map<number, boolean>>;
+  map: Map<number, Map<number, NodeState>>;
 };
 
 type Carrier = {
@@ -25,20 +32,31 @@ enum Direction {
   LEFT = 3,
 }
 
+const checkNodeInfected = (grid: Grid, x: number, y: number) => {
+  return checkNode(grid, x, y) === NodeState.INFECTED;
+};
+
 const checkNode = (grid: Grid, x: number, y: number) => {
   const column = grid.map.get(x);
-  if (!column) return false;
-  return column.get(y) || false;
+  if (!column) return NodeState.CLEAN;
+  return column.get(y) || NodeState.CLEAN;
 };
 
 /**
  * @param grid WARNING: will mutate the grid
  */
-const writeNode = (grid: Grid, x: number, y: number, value: boolean) => {
+const writeNodeLegacy = (grid: Grid, x: number, y: number, value: boolean) => {
+  writeNode(grid, x, y, value ? NodeState.INFECTED : NodeState.CLEAN);
+};
+
+/**
+ * @param grid WARNING: will mutate the grid
+ */
+const writeNode = (grid: Grid, x: number, y: number, value: NodeState) => {
   const { map } = grid;
   let column = map.get(x);
   if (!column) {
-    column = new Map<number, boolean>();
+    column = new Map<number, NodeState>();
     map.set(x, column);
   }
   column.set(y, value);
@@ -58,11 +76,16 @@ const parseInput = (input: string[]) => {
     maxX: 0,
     minY: 0,
     maxY: 0,
-    map: new Map<number, Map<number, boolean>>(),
+    map: new Map<number, Map<number, NodeState>>(),
   };
   input.forEach((row, y) =>
     [...row].forEach((val, x) => {
-      writeNode(grid, x - originOffsetX, y - originOffsetY, val === '#');
+      writeNode(
+        grid,
+        x - originOffsetX,
+        y - originOffsetY,
+        val === '#' ? NodeState.INFECTED : NodeState.CLEAN
+      );
     })
   );
   return grid;
@@ -73,7 +96,18 @@ const debugGrid = (grid: Grid, carrier?: Carrier) => {
   for (let y = grid.minY; y <= grid.maxY; y++) {
     console.log(
       _.range(grid.minX, grid.maxX + 1)
-        .map(x => (checkNode(grid, x, y) ? '#' : '.'))
+        .map(x => {
+          switch (checkNode(grid, x, y)) {
+            case NodeState.CLEAN:
+              return '.';
+            case NodeState.FLAGGED:
+              return 'F';
+            case NodeState.INFECTED:
+              return '#';
+            case NodeState.WEAKENED:
+              return 'W';
+          }
+        })
         .join(' ')
     );
   }
@@ -107,6 +141,19 @@ const turnLeft = (direction: Direction) => {
   }
 };
 
+const reverse = (direction: Direction) => {
+  switch (direction) {
+    case Direction.UP:
+      return Direction.DOWN;
+    case Direction.DOWN:
+      return Direction.UP;
+    case Direction.LEFT:
+      return Direction.RIGHT;
+    case Direction.RIGHT:
+      return Direction.LEFT;
+  }
+};
+
 const move = (x: number, y: number, direction: Direction) => {
   switch (direction) {
     case Direction.UP:
@@ -123,16 +170,55 @@ const move = (x: number, y: number, direction: Direction) => {
 /**
  * @param grid WARNING: will mutate the grid
  */
-const simulateStep = (grid: Grid, carrier: Carrier) => {
-  const isCurrentNodeInfected = checkNode(
-    grid,
-    carrier.currentX,
-    carrier.currentY
-  );
-  const newDirection = isCurrentNodeInfected
-    ? turnRight(carrier.direction)
-    : turnLeft(carrier.direction);
-  writeNode(grid, carrier.currentX, carrier.currentY, !isCurrentNodeInfected);
+const simulateStep = (
+  grid: Grid,
+  carrier: Carrier,
+  { complexMode = false } = {}
+) => {
+  const currentNodeState = checkNode(grid, carrier.currentX, carrier.currentY);
+  const isCurrentNodeInfected = currentNodeState === NodeState.INFECTED;
+
+  let newDirection;
+  switch (currentNodeState) {
+    case NodeState.CLEAN:
+      newDirection = turnLeft(carrier.direction);
+      break;
+    case NodeState.INFECTED:
+      newDirection = turnRight(carrier.direction);
+      break;
+    case NodeState.WEAKENED:
+      newDirection = carrier.direction;
+      break;
+    case NodeState.FLAGGED:
+      newDirection = reverse(carrier.direction);
+      break;
+    default:
+      throw new Error(`Unrecognized node state ${currentNodeState}`);
+  }
+
+  let newValue;
+  if (complexMode) {
+    switch (currentNodeState) {
+      case NodeState.CLEAN:
+        newValue = NodeState.WEAKENED;
+        break;
+      case NodeState.WEAKENED:
+        newValue = NodeState.INFECTED;
+        break;
+      case NodeState.INFECTED:
+        newValue = NodeState.FLAGGED;
+        break;
+      case NodeState.FLAGGED:
+        newValue = NodeState.CLEAN;
+        break;
+      default:
+        throw new Error(`Unrecognized node state ${currentNodeState}`);
+    }
+  } else {
+    newValue = isCurrentNodeInfected ? NodeState.CLEAN : NodeState.INFECTED;
+  }
+
+  writeNode(grid, carrier.currentX, carrier.currentY, newValue);
 
   const { x: newX, y: newY } = move(
     carrier.currentX,
@@ -146,20 +232,26 @@ const simulateStep = (grid: Grid, carrier: Carrier) => {
     direction: newDirection,
   };
 
+  // debugGrid(grid, newCarrier);
+
   return {
     carrier: newCarrier,
-    didInfect: !isCurrentNodeInfected,
+    didInfect: newValue === NodeState.INFECTED,
   };
 };
 
 /**
  * @param grid WARNING: will mutate the grid
  */
-const countInfectionsAfterIterations = (grid: Grid, iterations: number) => {
+const countInfectionsAfterIterations = (
+  grid: Grid,
+  iterations: number,
+  { complexMode = false } = {}
+) => {
   let infections = 0;
   let carrier = { currentX: 0, currentY: 0, direction: Direction.UP };
   for (let i = 0; i < iterations; i++) {
-    const result = simulateStep(grid, carrier);
+    const result = simulateStep(grid, carrier, { complexMode });
     if (result.didInfect) infections += 1;
     carrier = result.carrier;
   }
@@ -178,10 +270,10 @@ const PUZZLE_INPUT = readLines('./day22input.txt');
 
 console.log('Part One');
 const exampleGrid = parseInput(EXAMPLE_INPUT);
-test('-1,0 is infected', checkNode(exampleGrid, -1, 0));
-test('1,-1 is infected', checkNode(exampleGrid, 1, -1));
-test('0,0 is clean', !checkNode(exampleGrid, 0, 0));
-test('2,0 is clean', !checkNode(exampleGrid, 2, 0));
+test('-1,0 is infected', checkNodeInfected(exampleGrid, -1, 0));
+test('1,-1 is infected', checkNodeInfected(exampleGrid, 1, -1));
+test('0,0 is clean', !checkNodeInfected(exampleGrid, 0, 0));
+test('2,0 is clean', !checkNodeInfected(exampleGrid, 2, 0));
 test(
   'countInfectionsAfterIterations',
   equalResult(countInfectionsAfterIterations(parseInput(EXAMPLE_INPUT), 7), 5)
@@ -203,5 +295,25 @@ test(
   equalResult(
     countInfectionsAfterIterations(parseInput(PUZZLE_INPUT), 10000),
     5552
+  )
+);
+
+console.log('Part Two');
+test(
+  'countInfectionsAfterIterations',
+  equalResult(
+    countInfectionsAfterIterations(parseInput(EXAMPLE_INPUT), 100, {
+      complexMode: true,
+    }),
+    26
+  )
+);
+test(
+  'countInfectionsAfterIterations',
+  equalResult(
+    countInfectionsAfterIterations(parseInput(EXAMPLE_INPUT), 10000000, {
+      complexMode: true,
+    }),
+    2511944
   )
 );
