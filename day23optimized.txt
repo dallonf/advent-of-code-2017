@@ -29,6 +29,12 @@ sub g b
 # a=1, b=107917, c=124900, f=1, d=2, e=19, g=-107898, h=1
 # incrementing: e, g
 # exit point @ e=107917, g=0
+# loop4: 
+# a=1, b=107917, c=124900, f=1, d=3, e=34, g=-107883, h=1
+# incrementing: e, g
+# exit @ e=107917, g=0
+# actually, that's interesting. We keep getting stuck here
+# with only d incrementing
 jnz g -8 # loop1
 sub d -1
 set g d
@@ -36,6 +42,12 @@ sub g b
 # a=1, b=107900, c=124900, f=0, d=13, e=107900, g=-107887
 # g increments
 # exits when d=107900 and g=0
+# let's call this metaloop1
+# a=1, b=107917, c=124900, f=1, d=19, e=107917, g=-107898, h=1
+# incrementing: d, g
+# exit @ d=107917, g=0
+# OK, we're still getting stuck here, but it look like the real 
+# thing happening is b incrementing by 17
 jnz g -13 # loop2
 jnz f 2
 sub h -1
