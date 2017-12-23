@@ -202,6 +202,6 @@ test(
   'Part One answer',
   equalResult(
     countInfectionsAfterIterations(parseInput(PUZZLE_INPUT), 10000),
-    0
+    5552
   )
 );
