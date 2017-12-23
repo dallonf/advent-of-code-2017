@@ -111,20 +111,20 @@ const parseInstruction = (
 };
 
 const debugLine = (line: ExecutableInstruction, instructionNum: number) =>
-  `${_.padStart(instructionNum.toString(), 3, ' ')} | ${line.type} ${line.x} ${
-    line.y
-  } (Line #${line.line})`;
+  `Instruction ${_.padStart(instructionNum.toString(), 3, ' ')} | ${
+    line.type
+  } ${line.x} ${line.y} (line #${line.line})`;
 
 const executeInstructions = async (
   instructions: ExecutableInstruction[],
   {
     initialRegisterEntries = [],
     initialInstruction = 0,
-    debugMode = false,
+    autoBreakOn = 'none',
   }: {
     initialRegisterEntries?: { [key: string]: number };
     initialInstruction?: number;
-    debugMode?: boolean;
+    autoBreakOn?: 'none' | 'all' | 'jnz';
   } = {}
 ) => {
   let breakpoint: number | null = null;
@@ -136,10 +136,15 @@ const executeInstructions = async (
       currentInstruction.type,
       (instructionsCalled.get(currentInstruction.type) || 0) + 1
     );
-    if ((debugMode && breakpoint === null) || i === breakpoint) {
+    if (
+      i === breakpoint ||
+      (breakpoint == null &&
+        (autoBreakOn === 'all' ||
+          (autoBreakOn === 'jnz' && currentInstruction.type === 'jnz')))
+    ) {
       breakpoint = null;
       console.log('Registers', registers);
-      console.log('Line', debugLine(currentInstruction, i));
+      console.log(debugLine(currentInstruction, i));
       const result = await inquirer.prompt({
         name: 'continue',
         message: 'Continue? (n to exit, number to continue until breakpoint)',
@@ -179,7 +184,7 @@ const executeInstructions = async (
 
 const debugInstructions = (instructions: ExecutableInstruction[]) => {
   return executeInstructions(instructions, {
-    debugMode: true,
+    autoBreakOn: 'all',
   }).then(result => result.instructionsCalled.get('mul'));
 };
 
@@ -252,7 +257,7 @@ const runTests = async () => {
 
   // Third skip
   await executeInstructions(OPTIMIZED_INPUT, {
-    debugMode: true,
+    autoBreakOn: 'jnz',
     initialInstruction: 19,
     initialRegisterEntries: {
       a: 1,
