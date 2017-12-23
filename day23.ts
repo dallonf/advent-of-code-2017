@@ -238,7 +238,7 @@ const runTests = async () => {
 
   // Setup
   // await executeInstructions(OPTIMIZED_INPUT, {
-  //   debugMode: true,
+  //   autoBreakOn: 'none',
   //   initialRegisterEntries: { a: 1 },
   // });
 
@@ -288,21 +288,39 @@ const runTests = async () => {
   //   },
   // });
 
-  // Fourth skip... and beyond?
-  await executeInstructions(OPTIMIZED_INPUT, {
-    autoBreakOn: 'jnz',
-    initialInstruction: 19,
-    initialRegisterEntries: {
-      a: 1,
-      b: 107917,
-      c: 124900,
-      f: 1,
-      d: 5,
-      e: 107917,
-      g: 0,
-      h: 1,
-    },
-  });
+  // Fourth skip
+  // await executeInstructions(OPTIMIZED_INPUT, {
+  //   autoBreakOn: 'jnz',
+  //   initialInstruction: 23,
+  //   initialRegisterEntries: {
+  //     a: 1,
+  //     b: 107917,
+  //     c: 124900,
+  //     f: 1,
+  //     d: 107917,
+  //     e: 107917,
+  //     g: 0,
+  //     h: 1,
+  //   },
+  // });
+
+  // Fifth skip, b increments by 17 999 times to C (124900)
+  // await executeInstructions(OPTIMIZED_INPUT, {
+  //   autoBreakOn: 'jnz',
+  //   initialInstruction: 23,
+  //   initialRegisterEntries: {
+  //     a: 1,
+  //     b: 124900,
+  //     c: 124900,
+  //     f: 1,
+  //     d: 124900,
+  //     e: 124900,
+  //     g: 0,
+  //     h: 1,
+  //   },
+  // });
+
+  // never mind, this is the wrong approach. Gonna try to implement loop detection in the interpreter itself
 
   // test('Part Two answer', equalResult(await runProgram(PUZZLE_INPUT), 0));
 };
