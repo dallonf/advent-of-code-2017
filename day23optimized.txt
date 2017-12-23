@@ -1,9 +1,11 @@
-# Comments!! and newlines
-
+# Initial setup: a=1, b=79, c=79, then jump down to line 7
 set b 79
 set c b
 jnz a 2
 jnz 1 5
+
+# set a bunch of vars b=107900, c = 124900, f=1, d=2, e=2, g=-107896
+# then jump
 mul b 100
 sub b -100000
 set c b
@@ -15,7 +17,10 @@ set g d
 mul g e
 sub g b
 jnz g 2
-set f 0
+
+set f 0 # skipped in first execution
+
+# e=3, g=3
 sub e -1
 set g e
 sub g b

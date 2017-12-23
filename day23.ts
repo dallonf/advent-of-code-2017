@@ -122,6 +122,7 @@ const executeInstructions = async (
     debugMode = false,
   }: { initialRegisterEntries?: [string, number][]; debugMode?: boolean } = {}
 ) => {
+  let breakpoint: number | null = null;
   const registers = new Map<string, number>(initialRegisterEntries);
   const instructionsCalled = new Map<string, number>();
   for (let i = 0; i < instructions.length; i++) {
@@ -130,10 +131,27 @@ const executeInstructions = async (
       currentInstruction.type,
       (instructionsCalled.get(currentInstruction.type) || 0) + 1
     );
-    if (debugMode) {
+    if (
+      (debugMode && breakpoint === null) ||
+      currentInstruction.line === breakpoint
+    ) {
+      breakpoint = null;
       console.log('Registers', registers);
       console.log('Instruction', debugLine(currentInstruction));
-      await inquirer.prompt({ name: 'continue', message: 'Continue?' });
+      const result = await inquirer.prompt({
+        name: 'continue',
+        message: 'Continue? (n to exit, number to continue until breakpoint)',
+      });
+      let enteredBreakpoint;
+      if (result['continue'] === 'n') {
+        process.exit(0);
+      } else if (
+        (enteredBreakpoint = parseInt(result['continue'], 10)) &&
+        !Number.isNaN(enteredBreakpoint)
+      ) {
+        console.log(`Setting breakpoint for line ${enteredBreakpoint}`);
+        breakpoint = enteredBreakpoint;
+      }
       console.log();
     }
     const fn = INSTRUCTION_FNS[currentInstruction.type];
@@ -193,7 +211,10 @@ const runTests = async () => {
       filterNulls: false,
     })
   );
-  await executeInstructions(PUZZLE_INPUT, { debugMode: true });
+  await executeInstructions(OPTIMIZED_INPUT, {
+    debugMode: true,
+    initialRegisterEntries: [['a', 1]],
+  });
 
   // test('Part Two answer', equalResult(await runProgram(PUZZLE_INPUT), 0));
 };
