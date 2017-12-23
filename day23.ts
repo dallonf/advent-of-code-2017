@@ -1,4 +1,4 @@
-import * as readline from 'readline-sync';
+import * as _ from 'lodash';
 import * as inquirer from 'inquirer';
 import { readLines } from './util';
 import test, { equalResult } from './test';
@@ -11,12 +11,13 @@ type SideEffect =
   | { type: 'set'; register: string; value: number }
   | { type: 'noop' };
 type InstructionFn = (
-  input: Instruction,
+  input: ExecutableInstruction,
   registers: Map<string, number>
 ) => SideEffect;
 type InstructionType = keyof typeof INSTRUCTION_FNS;
-interface Instruction {
+interface ExecutableInstruction {
   type: InstructionType;
+  line: number;
   x: Value;
   y?: Value;
 }
@@ -77,7 +78,22 @@ const getValue = (input: Value, registers: Map<string, number>): number => {
   return registers.get(input) || 0;
 };
 
-const parseInstruction = (input: string): Instruction => {
+const parseProgram = (lines: string[]): ExecutableInstruction[] => {
+  return lines
+    .map((line, i) => {
+      if (!line.trim() || line.startsWith('#')) {
+        return { type: 'comment' as 'comment', content: line };
+      } else {
+        return parseInstruction(line, i + 1);
+      }
+    })
+    .filter(a => a.type !== 'comment') as ExecutableInstruction[];
+};
+
+const parseInstruction = (
+  input: string,
+  line: number
+): ExecutableInstruction => {
   const tokens = input.split(' ');
   const type = tokens[0];
   if (!type) throw new Error('Empty instruction received');
@@ -91,11 +107,16 @@ const parseInstruction = (input: string): Instruction => {
   let y: Value | undefined = tokens[2] || undefined;
   if (y && y.match(/^-?[0-9]+$/)) y = parseInt(y, 10);
 
-  return { type: type as InstructionType, x, y };
+  return { type: type as InstructionType, x, y, line };
 };
 
+const debugLine = (line: ExecutableInstruction) =>
+  `${_.padStart(line.line.toString(), 3, ' ')} | ${line.type} ${line.x} ${
+    line.y
+  }`;
+
 const executeInstructions = async (
-  instructions: Instruction[],
+  instructions: ExecutableInstruction[],
   {
     initialRegisterEntries = [],
     debugMode = false,
@@ -111,7 +132,7 @@ const executeInstructions = async (
     );
     if (debugMode) {
       console.log('Registers', registers);
-      console.log('Instruction', i, currentInstruction);
+      console.log('Instruction', debugLine(currentInstruction));
       await inquirer.prompt({ name: 'continue', message: 'Continue?' });
       console.log();
     }
@@ -136,20 +157,24 @@ const executeInstructions = async (
   return { instructionsCalled, registers };
 };
 
-const debugInstructions = (instructions: Instruction[]) => {
+const debugInstructions = (instructions: ExecutableInstruction[]) => {
   return executeInstructions(instructions, {
     debugMode: true,
   }).then(result => result.instructionsCalled.get('mul'));
 };
 
-const runProgram = (instructions: Instruction[]) => {
+const runProgram = (instructions: ExecutableInstruction[]) => {
   return executeInstructions(instructions, {
     initialRegisterEntries: [['a', 1]],
   }).then(result => result.registers.get('h'));
 };
 
 const runTests = async () => {
-  const PUZZLE_INPUT = readLines('./day23input.txt').map(parseInstruction);
+  const PUZZLE_INPUT = parseProgram(
+    readLines('./day23input.txt', {
+      filterNulls: false,
+    })
+  );
 
   console.log('Part One');
   test(
@@ -161,10 +186,20 @@ const runTests = async () => {
       5929
     )
   );
-  // await executeInstructions(PUZZLE_INPUT, { debugMode: true });
 
   console.log('Part Two');
+  const OPTIMIZED_INPUT = parseProgram(
+    readLines('./day23optimized.txt', {
+      filterNulls: false,
+    })
+  );
+  await executeInstructions(PUZZLE_INPUT, { debugMode: true });
+
   // test('Part Two answer', equalResult(await runProgram(PUZZLE_INPUT), 0));
 };
 
 runTests();
+
+process.on('unhandledRejection', e => {
+  console.log('Promise rejection:', e);
+});
