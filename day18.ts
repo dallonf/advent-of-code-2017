@@ -45,7 +45,7 @@ const INSTRUCTION_FNS = {
         'Expected X of add instruction to be register, got ' + input.x
       );
     if (input.y == null)
-      throw new Error('Set instruction called without Y value');
+      throw new Error('Add instruction called without Y value');
     return {
       type: 'set',
       register: input.x,
@@ -86,7 +86,6 @@ const INSTRUCTION_FNS = {
     if (input.y == null)
       throw new Error('Jgz instruction called without Y value');
     if (getValue(input.x, registers) > 0) {
-      // return { type: 'noop', by: getValue(input.y, registers) };
       return { type: 'jump', by: getValue(input.y, registers) };
     } else {
       return { type: 'noop' };
