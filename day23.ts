@@ -1,3 +1,5 @@
+import * as readline from 'readline-sync';
+import * as inquirer from 'inquirer';
 import { readLines } from './util';
 import test, { equalResult } from './test';
 
@@ -92,8 +94,14 @@ const parseInstruction = (input: string): Instruction => {
   return { type: type as InstructionType, x, y };
 };
 
-const debugInstructions = (instructions: Instruction[]) => {
-  const registers = new Map<string, number>();
+const executeInstructions = async (
+  instructions: Instruction[],
+  {
+    initialRegisterEntries = [],
+    debugMode = false,
+  }: { initialRegisterEntries?: [string, number][]; debugMode?: boolean } = {}
+) => {
+  const registers = new Map<string, number>(initialRegisterEntries);
   const instructionsCalled = new Map<string, number>();
   for (let i = 0; i < instructions.length; i++) {
     const currentInstruction = instructions[i];
@@ -101,6 +109,12 @@ const debugInstructions = (instructions: Instruction[]) => {
       currentInstruction.type,
       (instructionsCalled.get(currentInstruction.type) || 0) + 1
     );
+    if (debugMode) {
+      console.log('Registers', registers);
+      console.log('Instruction', i, currentInstruction);
+      await inquirer.prompt({ name: 'continue', message: 'Continue?' });
+      console.log();
+    }
     const fn = INSTRUCTION_FNS[currentInstruction.type];
     const effect = fn(currentInstruction, registers);
 
@@ -115,18 +129,42 @@ const debugInstructions = (instructions: Instruction[]) => {
         break;
       case 'noop':
         break;
-      default:
-        throw new Error(`Unrecognized side effect ${effect.type}`);
+      // default:
+      //   throw new Error(`Unrecognized side effect ${effect.type}`);
     }
   }
-  return instructionsCalled;
+  return { instructionsCalled, registers };
 };
 
-const PUZZLE_INPUT = readLines('./day23input.txt').map(parseInstruction);
+const debugInstructions = (instructions: Instruction[]) => {
+  return executeInstructions(instructions, {
+    debugMode: true,
+  }).then(result => result.instructionsCalled.get('mul'));
+};
 
-console.log('Part One');
+const runProgram = (instructions: Instruction[]) => {
+  return executeInstructions(instructions, {
+    initialRegisterEntries: [['a', 1]],
+  }).then(result => result.registers.get('h'));
+};
 
-test(
-  'Part One answer',
-  equalResult(debugInstructions(PUZZLE_INPUT).get('mul'), 0)
-);
+const runTests = async () => {
+  const PUZZLE_INPUT = readLines('./day23input.txt').map(parseInstruction);
+
+  console.log('Part One');
+  test(
+    'Part One answer',
+    equalResult(
+      await executeInstructions(PUZZLE_INPUT).then(result =>
+        result.instructionsCalled.get('mul')
+      ),
+      5929
+    )
+  );
+  // await executeInstructions(PUZZLE_INPUT, { debugMode: true });
+
+  console.log('Part Two');
+  // test('Part Two answer', equalResult(await runProgram(PUZZLE_INPUT), 0));
+};
+
+runTests();
