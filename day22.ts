@@ -16,7 +16,8 @@ type Grid = {
   maxX: number;
   minY: number;
   maxY: number;
-  map: Map<number, Map<number, NodeState>>;
+  map: { [x: number]: { [y: number]: NodeState } };
+  // map: Map<number, Map<number, NodeState>>;
 };
 
 type Carrier = {
@@ -37,9 +38,9 @@ const checkNodeInfected = (grid: Grid, x: number, y: number) => {
 };
 
 const checkNode = (grid: Grid, x: number, y: number) => {
-  const column = grid.map.get(x);
+  const column = grid.map[x];
   if (!column) return NodeState.CLEAN;
-  return column.get(y) || NodeState.CLEAN;
+  return column[y] || NodeState.CLEAN;
 };
 
 /**
@@ -54,12 +55,11 @@ const writeNodeLegacy = (grid: Grid, x: number, y: number, value: boolean) => {
  */
 const writeNode = (grid: Grid, x: number, y: number, value: NodeState) => {
   const { map } = grid;
-  let column = map.get(x);
+  let column = map[x];
   if (!column) {
-    column = new Map<number, NodeState>();
-    map.set(x, column);
+    column = map[x] = {};
   }
-  column.set(y, value);
+  column[y] = value;
   if (x > grid.maxX) grid.maxX = x;
   if (x < grid.minX) grid.minX = x;
   if (y > grid.maxY) grid.maxY = y;
@@ -76,7 +76,7 @@ const parseInput = (input: string[]) => {
     maxX: 0,
     minY: 0,
     maxY: 0,
-    map: new Map<number, Map<number, NodeState>>(),
+    map: {},
   };
   input.forEach((row, y) =>
     [...row].forEach((val, x) => {
@@ -315,5 +315,14 @@ test(
       complexMode: true,
     }),
     2511944
+  )
+);
+test(
+  'Part Two answer',
+  equalResult(
+    countInfectionsAfterIterations(parseInput(PUZZLE_INPUT), 10000000, {
+      complexMode: true,
+    }),
+    2511527
   )
 );
