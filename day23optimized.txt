@@ -13,22 +13,30 @@ sub c -17000
 set f 1
 set d 2
 set e 2
-set g d
+# there's a loop between here and #loop1 that I think I can skip
+# a=1, b=107900, c=124900, f=1, d=2, e=11, g=-107889 (after a few iterations)
+# every iteration, e and g increment
+# when g is 0, e will be 107900 and it'll skip the jump on line 28
+set g d 
 mul g e
 sub g b
 jnz g 2
-
-set f 0 # skipped in first execution
-
-# e=3, g=3
-sub e -1
+set f 0
+sub e -1 # e=107901
 set g e
 sub g b
-jnz g -8
+# stuck here again, let's call it loop3
+# a=1, b=107917, c=124900, f=1, d=2, e=19, g=-107898, h=1
+# incrementing: e, g
+# exit point @ e=107917, g=0
+jnz g -8 # loop1
 sub d -1
 set g d
 sub g b
-jnz g -13
+# a=1, b=107900, c=124900, f=0, d=13, e=107900, g=-107887
+# g increments
+# exits when d=107900 and g=0
+jnz g -13 # loop2
 jnz f 2
 sub h -1
 set g b

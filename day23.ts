@@ -110,34 +110,36 @@ const parseInstruction = (
   return { type: type as InstructionType, x, y, line };
 };
 
-const debugLine = (line: ExecutableInstruction) =>
-  `${_.padStart(line.line.toString(), 3, ' ')} | ${line.type} ${line.x} ${
+const debugLine = (line: ExecutableInstruction, instructionNum: number) =>
+  `${_.padStart(instructionNum.toString(), 3, ' ')} | ${line.type} ${line.x} ${
     line.y
-  }`;
+  } (Line #${line.line})`;
 
 const executeInstructions = async (
   instructions: ExecutableInstruction[],
   {
     initialRegisterEntries = [],
+    initialInstruction = 0,
     debugMode = false,
-  }: { initialRegisterEntries?: [string, number][]; debugMode?: boolean } = {}
+  }: {
+    initialRegisterEntries?: { [key: string]: number };
+    initialInstruction?: number;
+    debugMode?: boolean;
+  } = {}
 ) => {
   let breakpoint: number | null = null;
-  const registers = new Map<string, number>(initialRegisterEntries);
+  const registers = new Map<string, number>(_.toPairs(initialRegisterEntries));
   const instructionsCalled = new Map<string, number>();
-  for (let i = 0; i < instructions.length; i++) {
+  for (let i = initialInstruction; i < instructions.length; i++) {
     const currentInstruction = instructions[i];
     instructionsCalled.set(
       currentInstruction.type,
       (instructionsCalled.get(currentInstruction.type) || 0) + 1
     );
-    if (
-      (debugMode && breakpoint === null) ||
-      currentInstruction.line === breakpoint
-    ) {
+    if ((debugMode && breakpoint === null) || i === breakpoint) {
       breakpoint = null;
       console.log('Registers', registers);
-      console.log('Instruction', debugLine(currentInstruction));
+      console.log('Line', debugLine(currentInstruction, i));
       const result = await inquirer.prompt({
         name: 'continue',
         message: 'Continue? (n to exit, number to continue until breakpoint)',
@@ -183,7 +185,7 @@ const debugInstructions = (instructions: ExecutableInstruction[]) => {
 
 const runProgram = (instructions: ExecutableInstruction[]) => {
   return executeInstructions(instructions, {
-    initialRegisterEntries: [['a', 1]],
+    initialRegisterEntries: { a: 1 },
   }).then(result => result.registers.get('h'));
 };
 
@@ -211,9 +213,57 @@ const runTests = async () => {
       filterNulls: false,
     })
   );
+
+  // Setup
+  // await executeInstructions(OPTIMIZED_INPUT, {
+  //   debugMode: true,
+  //   initialRegisterEntries: { a: 1 },
+  // });
+
+  // First skip
+  // await executeInstructions(OPTIMIZED_INPUT, {
+  //   debugMode: true,
+  //   initialInstruction: 19,
+  //   initialRegisterEntries: {
+  //     a: 1,
+  //     b: 107900,
+  //     c: 124900,
+  //     f: 1,
+  //     d: 2,
+  //     e: 107900,
+  //     g: 0,
+  //   },
+  // });
+
+  // Second skip
+  // await executeInstructions(OPTIMIZED_INPUT, {
+  //   debugMode: true,
+  //   initialInstruction: 23,
+  //   initialRegisterEntries: {
+  //     a: 1,
+  //     b: 107900,
+  //     c: 124900,
+  //     f: 0,
+  //     d: 107900,
+  //     e: 107900,
+  //     g: 0,
+  //   },
+  // });
+
+  // Third skip
   await executeInstructions(OPTIMIZED_INPUT, {
     debugMode: true,
-    initialRegisterEntries: [['a', 1]],
+    initialInstruction: 19,
+    initialRegisterEntries: {
+      a: 1,
+      b: 107917,
+      c: 124900,
+      f: 1,
+      d: 2,
+      e: 107917,
+      g: 0,
+      h: 1,
+    },
   });
 
   // test('Part Two answer', equalResult(await runProgram(PUZZLE_INPUT), 0));
