@@ -147,17 +147,34 @@ const executeInstructions = async (
       console.log(debugLine(currentInstruction, i));
       const result = await inquirer.prompt({
         name: 'continue',
-        message: 'Continue? (n to exit, number to continue until breakpoint)',
+        message:
+          'Continue? (n to exit, number to continue until instruction #, prefix with l to continue until line #)',
       });
-      let enteredBreakpoint;
+      let enteredBreakpoint: number;
       if (result['continue'] === 'n') {
         process.exit(0);
       } else if (
         (enteredBreakpoint = parseInt(result['continue'], 10)) &&
         !Number.isNaN(enteredBreakpoint)
       ) {
-        console.log(`Setting breakpoint for line ${enteredBreakpoint}`);
+        console.log(`Setting breakpoint for instruction ${enteredBreakpoint}`);
         breakpoint = enteredBreakpoint;
+      } else if (
+        result['continue'].startsWith('l') &&
+        (enteredBreakpoint = parseInt(result['continue'].slice(1), 10)) &&
+        !Number.isNaN(enteredBreakpoint)
+      ) {
+        const foundBreakpoint = instructions.findIndex(
+          i => i.line === enteredBreakpoint
+        );
+        if (foundBreakpoint === -1) {
+          console.log(`Error: no instruction at line #${enteredBreakpoint}`);
+        } else {
+          console.log(
+            `Setting breakpoint for line #${enteredBreakpoint} (instruction ${foundBreakpoint})`
+          );
+          breakpoint = foundBreakpoint;
+        }
       }
       console.log();
     }
@@ -256,6 +273,22 @@ const runTests = async () => {
   // });
 
   // Third skip
+  // await executeInstructions(OPTIMIZED_INPUT, {
+  //   autoBreakOn: 'jnz',
+  //   initialInstruction: 19,
+  //   initialRegisterEntries: {
+  //     a: 1,
+  //     b: 107917,
+  //     c: 124900,
+  //     f: 1,
+  //     d: 2,
+  //     e: 107917,
+  //     g: 0,
+  //     h: 1,
+  //   },
+  // });
+
+  // Fourth skip... and beyond?
   await executeInstructions(OPTIMIZED_INPUT, {
     autoBreakOn: 'jnz',
     initialInstruction: 19,
@@ -264,7 +297,7 @@ const runTests = async () => {
       b: 107917,
       c: 124900,
       f: 1,
-      d: 2,
+      d: 5,
       e: 107917,
       g: 0,
       h: 1,
