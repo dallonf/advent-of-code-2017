@@ -1,0 +1,130 @@
+i33 (exit):
+  - var needed: h
+  - can come from:
+    - i30
+    - NOT i32 (jnz 1)
+  
+i30 (to: i33[h]):
+  - var needed: h
+  - can come from:
+    - i29 IF [g==0]
+
+i29 (to: i30[h,g==0]):
+  - var needed: h
+  - constraint: g == 0
+  - can come from:
+    - i28
+
+i28 (to: i29[h,g==0]):
+  - vars needed: h
+  - constraint: g - c == 0
+  - can come from:
+    - i27
+
+i27 (to: i28[h,g-c==0])
+  - vars needed: h
+  - constraint: g - c == 0
+  - can come from:
+    - i26
+    - i25 IF [f!=0]
+
+i26 (to: i27[h,g-c==0])
+  - vars needed: h
+  - constraint: g - c == 0
+  - can come from:
+    - i25 IF [f==0]
+
+i25 (to: i27[h,g-c==0,f!=0])
+  - vars needed: h
+  - constraint: g - c == 0
+  - constraint: f != 0
+  - can come from:
+    - i24 IF [g==0]
+
+i25 (to: i26[h,g-c==0,f==0])
+  - vars needed: h
+  - constraint: g - c == 0
+  - constraint: f == 0
+  - can come from:
+    - i24 IF [g==0]
+
+i24 (to: i25[h,f!=0,g==0,c==0])
+  - vars needed: h
+  - constraint: f != 0
+  - constraint: g == 0
+  - constraint: c == 0
+  - can come from:
+    - i23
+
+i24 (to: i25[h,f==0,g==0,c==0])
+  - vars needed: h
+  - constraint: f == 0
+  - constraint: g == 0
+  - constraint: c == 0
+  - can come from:
+    - i23
+
+i23 (to: i24[h,f!=0,g==0,c==0])
+  - vars needed: h
+  - constraint: f != 0
+  - constraint: c == 0
+  - constraint: g - b == 0
+  - can come from:
+    - i22
+
+i23 (to: i24[h,f==0,g==0,c==0])
+  - vars needed: h
+  - constraint: f == 0
+  - constraint: c == 0
+  - constraint: g - b == 0
+  - can come from:
+    - i22
+
+i22 (to: i23[h,f!=0,c==0,g-b==0])
+  - vars needed: h
+  - constraint: f != 0
+  - constraint: c == 0
+  - constraint: d - b == 0
+  - can come from:
+    - i21
+
+i22 (to: i23[h,f==0,c==0,g-b==0])
+  - vars needed: h
+  - constraint: f == 0
+  - constraint: c == 0
+  - constraint: d - b == 0
+  - can come from:
+    - i21
+
+i21 (to: i22[h,f!=0,c==0,d-b==0])
+  - vars needed: h
+  - constraint: f != 0
+  - constraint: c == 0
+  - constraint: d - 1 - b == 0
+  - can come from:
+    - i20 IF g==0
+
+i21 (to: i22[h,f==0,c==0,d-b==0])
+  - vars needed: h
+  - constraint: f == 0
+  - constraint: c == 0
+  - constraint: d - 1 - b == 0
+  - can come from:
+    - i20 IF g==0
+
+i20 (to: i21[h,f!=0,c==0,d-1-b==0,g==0])
+  - vars needed: h
+  - constraint: f != 0
+  - constraint: c == 0
+  - constraint: d - 1 - b == 0
+  - can come from:
+    - i19
+
+i20 (to: i21[h,f==0,c==0,d-1-b==0,g==0])
+
+119 (to: i20[h,f!=0,c==0,d-1-b==0,g==0])
+  - vars needed: h
+  - constraint: f != 0
+  - constraint: c == 0
+  - constraint: d - 1 - b == 0
+  - constraint: g - b == 0
