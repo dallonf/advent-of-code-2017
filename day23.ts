@@ -367,8 +367,81 @@ const deeplyReplaceExpression = (
   }
 };
 
-// const simplifyConstraint = (constraint: Constraint) => {
-// }
+const simplifyConstraint = (constraint: Constraint): Constraint | null => {
+  if (constraint.type === 'never') {
+    return constraint;
+  } else if (constraint.type === 'isZero') {
+    const simplifiedExpression = simplifyExpression(constraint.expression);
+    if (simplifiedExpression.type === 'literal') {
+      if (simplifiedExpression.value === 0) {
+        return null;
+      } else {
+        return { type: 'never' };
+      }
+    } else {
+      return { type: 'isZero', expression: simplifiedExpression };
+    }
+  } else if (constraint.type === 'isNotZero') {
+    const simplifiedExpression = simplifyExpression(constraint.expression);
+    if (simplifiedExpression.type === 'literal') {
+      if (simplifiedExpression.value === 0) {
+        return { type: 'never' };
+      } else {
+        return null;
+      }
+    } else {
+      return { type: 'isNotZero', expression: simplifiedExpression };
+    }
+  } else {
+    throw new Error(`Constraint ${JSON.stringify(constraint)} is weird`);
+  }
+};
+
+const simplifyExpression = (
+  expression: ConstraintExpression
+): ConstraintExpression => {
+  if (expression.type === 'literal') {
+    return expression;
+  } else if (expression.type === 'valueOf') {
+    return expression;
+  } else if (expression.type === 'multiply' || expression.type === 'subtract') {
+    const simplifiedA = simplifyExpression(expression.aExpression);
+    const simplifiedB = simplifyExpression(expression.aExpression);
+    if (simplifiedA.type === 'literal' && simplifiedB.type === 'literal') {
+      if (expression.type === 'multiply') {
+        return {
+          type: 'literal',
+          value: simplifiedA.value * simplifiedB.value,
+        };
+      } else if (expression.type === 'subtract') {
+        return {
+          type: 'literal',
+          value: simplifiedA.value - simplifiedB.value,
+        };
+      } else {
+        throw new Error(`Expression ${JSON.stringify(expression)} is weird`);
+      }
+    } else {
+      if (expression.type === 'multiply') {
+        return {
+          type: expression.type,
+          aExpression: simplifiedA,
+          bExpression: simplifiedB,
+        };
+      } else if (expression.type === 'subtract') {
+        return {
+          type: expression.type,
+          aExpression: simplifiedA,
+          bExpression: simplifiedB,
+        };
+      } else {
+        throw new Error(`Expression ${JSON.stringify(expression)} is weird`);
+      }
+    }
+  } else {
+    throw new Error(`Expression ${JSON.stringify(expression)} is weird`);
+  }
+};
 
 const logThru = (prefix: string, x: any) =>
   console.log(prefix, JSON.stringify(x, null, 2)) || x;
@@ -379,15 +452,59 @@ const solveInstruction = (
   vars: string[],
   instructions: ExecutableInstruction[]
 ): any => {
+  constraints = constraints
+    .map(simplifyConstraint)
+    .filter(x => x) as Constraint[];
+
   if (constraints.some(c => c.type === 'never')) {
     return { type: 'impossible', at: index };
   }
 
   // We're at the start!
   if (index < 0) {
-    console.log(JSON.stringify(constraints, null, 2));
-    throw new Error('Reached the start!');
-    // return constraints;
+    const registers: { [key: string]: number } = {
+      a: 1,
+      b: 0,
+      c: 0,
+      d: 0,
+      e: 0,
+      f: 0,
+      g: 0,
+      h: 0,
+    };
+
+    const finalConstraints = constraints
+      .map(c => {
+        if (c.type === 'isZero' || c.type == 'isNotZero') {
+          return {
+            ...c,
+            expression: Object.keys(registers).reduce(
+              (prev, k) =>
+                deeplyReplaceExpression(prev, k, () => ({
+                  type: 'literal',
+                  value: registers[k],
+                })),
+              c.expression
+            ),
+          };
+        } else {
+          throw new Error(
+            `Don't know how to handle begin on affected constraint type ${
+              c.type
+            } yet`
+          );
+        }
+      })
+      .map(simplifyConstraint)
+      .filter(x => x) as Constraint[];
+
+    console.log('Reached the start!');
+    if (finalConstraints.some(c => c.type === 'never')) {
+      console.log('... but it was an invalid state');
+      return { type: 'impossible', at: index };
+    } else {
+      throw new Error('Reached the start!');
+    }
   }
 
   const instruction = instructions[index];
