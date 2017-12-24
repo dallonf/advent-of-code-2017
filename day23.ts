@@ -23,8 +23,23 @@ interface ExecutableInstruction {
   y?: Value;
 }
 
-type Constraint = any;
-type ConstraintExpression = any;
+type Constraint =
+  | { type: 'never' }
+  | { type: 'isZero'; expression: ConstraintExpression }
+  | { type: 'isNotZero'; expression: ConstraintExpression };
+type ConstraintExpression =
+  | { type: 'literal'; value: number }
+  | { type: 'valueOf'; register: string }
+  | {
+      type: 'subtract';
+      aExpression: ConstraintExpression;
+      bExpression: ConstraintExpression;
+    }
+  | {
+      type: 'multiply';
+      aExpression: ConstraintExpression;
+      bExpression: ConstraintExpression;
+    };
 
 const INSTRUCTION_FNS = {
   begin: (() => ({ type: 'noop' })) as InstructionFn,
@@ -230,7 +245,7 @@ const solveProgram = (instructions: ExecutableInstruction[]) => {
 const getPossibleSources = (
   sourceIndex: number,
   instructions: ExecutableInstruction[]
-) => {
+): { index: number; constraints: Constraint[] }[] => {
   const canComeFromFallDown = sourceIndex - 1;
   const canComeFromJump = instructions
     .filter(
@@ -245,7 +260,7 @@ const getPossibleSources = (
     canComeFromFallDown < 0
       ? { type: 'begin', line: -1, index: -1, x: -1 }
       : instructions[canComeFromFallDown];
-  let fallDownConstraint: Constraint;
+  let fallDownConstraint: Constraint | null;
   if (fallDownInstruction.type === 'jnz') {
     if (typeof fallDownInstruction.x === 'number') {
       if (fallDownInstruction.x !== 0) {
@@ -258,6 +273,8 @@ const getPossibleSources = (
         type: 'isZero',
         expression: { type: 'valueOf', register: fallDownInstruction.x },
       };
+    } else {
+      throw new Error(`Instruction ${canComeFromFallDown} is weird`);
     }
   } else {
     fallDownConstraint = null;
@@ -265,7 +282,7 @@ const getPossibleSources = (
 
   const jumpSources = canComeFromJump.map(i => {
     const instruction = instructions[i];
-    let constraint: Constraint;
+    let constraint: Constraint | null;
     if (instruction.type === 'jnz') {
       if (typeof instruction.x === 'number') {
         if (instruction.x === 0) {
@@ -278,17 +295,22 @@ const getPossibleSources = (
           type: 'isNotZero',
           expression: { type: 'valueOf', register: instruction.x },
         };
+      } else {
+        throw new Error(`Instruction ${i} is weird`);
       }
     } else {
       constraint = null;
     }
-    return { index: i, constraints: [constraint].filter(x => x) };
+    return {
+      index: i,
+      constraints: [constraint].filter(x => x) as Constraint[],
+    };
   });
 
   const sources = [
     {
       index: canComeFromFallDown,
-      constraints: [fallDownConstraint].filter(x => x),
+      constraints: [fallDownConstraint].filter(x => x) as Constraint[],
     },
   ].concat(jumpSources);
 
@@ -308,7 +330,21 @@ const deeplyReplaceExpression = (
     }
   } else if (expression.type === 'literal') {
     return expression;
-  } else if (expression.type === 'subtract' || expression.type === 'multiply') {
+  } else if (expression.type === 'subtract') {
+    return {
+      type: expression.type,
+      aExpression: deeplyReplaceExpression(
+        expression.aExpression,
+        affectedRegister,
+        replaceWith
+      ),
+      bExpression: deeplyReplaceExpression(
+        expression.bExpression,
+        affectedRegister,
+        replaceWith
+      ),
+    };
+  } else if (expression.type === 'multiply') {
     return {
       type: expression.type,
       aExpression: deeplyReplaceExpression(
@@ -325,7 +361,7 @@ const deeplyReplaceExpression = (
   } else {
     throw new Error(
       `Don't know how to deeplyReplace on expression type ${
-        expression.type
+        (expression as any).type
       } yet`
     );
   }
@@ -371,6 +407,7 @@ const solveInstruction = (
       // );
     }
     newConstraints = constraints.map(c => {
+      const yValue = instruction.y as string | number;
       if (c.type === 'isZero' || c.type == 'isNotZero') {
         return {
           ...c,
@@ -381,9 +418,9 @@ const solveInstruction = (
               type: 'subtract',
               aExpression: prevExpression,
               bExpression:
-                typeof instruction.y === 'number'
-                  ? { type: 'literal', value: instruction.y }
-                  : { type: 'valueOf', register: instruction.y },
+                typeof yValue === 'number'
+                  ? { type: 'literal', value: yValue }
+                  : { type: 'valueOf', register: yValue },
             })
           ),
         };
@@ -403,6 +440,7 @@ const solveInstruction = (
     //     `Don't know how to handle set on affected var ${affectedRegister} yet`
     //   );
     // }
+    const yValue = instruction.y as string | number;
     newConstraints = constraints.map(c => {
       if (c.type === 'isZero' || c.type == 'isNotZero') {
         return {
@@ -411,9 +449,9 @@ const solveInstruction = (
             c.expression,
             affectedRegister,
             () =>
-              typeof instruction.y === 'number'
-                ? { type: 'literal', value: instruction.y }
-                : { type: 'valueOf', register: instruction.y }
+              typeof yValue === 'number'
+                ? { type: 'literal', value: yValue }
+                : { type: 'valueOf', register: yValue }
           ),
         };
       } else {
@@ -426,6 +464,7 @@ const solveInstruction = (
     });
   } else if (instruction.type === 'mul') {
     const affectedRegister = instruction.x as string;
+    const yValue = instruction.y as string | number;
     if (vars.indexOf(affectedRegister) !== -1) {
       // TODO: handle vars
       // console.log(JSON.stringify(constraints, null, 2), vars, index);
@@ -444,9 +483,9 @@ const solveInstruction = (
               type: 'multiply',
               aExpression: prevExpression,
               bExpression:
-                typeof instruction.y === 'number'
-                  ? { type: 'literal', value: instruction.y }
-                  : { type: 'valueOf', register: instruction.y },
+                typeof yValue === 'number'
+                  ? { type: 'literal', value: yValue }
+                  : { type: 'valueOf', register: yValue },
             })
           ),
         };
