@@ -18,6 +18,7 @@ type InstructionType = keyof typeof INSTRUCTION_FNS;
 interface ExecutableInstruction {
   type: InstructionType;
   line: number;
+  index: number;
   x: Value;
   y?: Value;
 }
@@ -87,13 +88,11 @@ const parseProgram = (lines: string[]): ExecutableInstruction[] => {
         return parseInstruction(line, i + 1);
       }
     })
-    .filter(a => a.type !== 'comment') as ExecutableInstruction[];
+    .filter(a => a.type !== 'comment')
+    .map((i, index) => ({ ...i, index })) as ExecutableInstruction[];
 };
 
-const parseInstruction = (
-  input: string,
-  line: number
-): ExecutableInstruction => {
+const parseInstruction = (input: string, line: number) => {
   const tokens = input.split(' ');
   const type = tokens[0];
   if (!type) throw new Error('Empty instruction received');
@@ -211,6 +210,157 @@ const runProgram = (instructions: ExecutableInstruction[]) => {
   }).then(result => result.registers.get('h'));
 };
 
+const solveProgram = (instructions: ExecutableInstruction[]) => {
+  const exitIndex = instructions.length;
+  const vars = ['h'];
+
+  const sources = getPossibleSources(exitIndex, instructions);
+
+  const solutions = sources.map(s =>
+    solveInstruction(s.index, s.constraints, vars, instructions)
+  );
+
+  console.log(solutions);
+};
+
+const getPossibleSources = (
+  sourceIndex: number,
+  instructions: ExecutableInstruction[]
+) => {
+  const canComeFromFallDown = sourceIndex - 1;
+  const canComeFromJump = instructions
+    .filter(
+      i =>
+        i.type == 'jnz' &&
+        typeof i.y === 'number' &&
+        sourceIndex == i.index + i.y
+    )
+    .map(i => i.index);
+
+  const fallDownInstruction = instructions[canComeFromFallDown];
+  let fallDownConstraint: any;
+  if (fallDownInstruction.type === 'jnz') {
+    if (typeof fallDownInstruction.x === 'number') {
+      if (fallDownInstruction.x !== 0) {
+        fallDownConstraint = { type: 'never' };
+      } else {
+        fallDownConstraint = null;
+      }
+    } else if (typeof fallDownInstruction.x === 'string') {
+      fallDownConstraint = {
+        type: 'isZero',
+        expression: { type: 'valueOf', register: fallDownInstruction.x },
+      };
+    }
+  } else {
+    fallDownConstraint = null;
+  }
+
+  const jumpSources = canComeFromJump.map(i => {
+    const instruction = instructions[i];
+    let constraint: any;
+    if (instruction.type === 'jnz') {
+      if (typeof instruction.x === 'number') {
+        if (instruction.x === 0) {
+          constraint = { type: 'never' };
+        } else {
+          constraint = null;
+        }
+      } else if (typeof instruction.x === 'string') {
+        constraint = {
+          type: 'isNotZero',
+          expression: { type: 'valueOf', register: instruction.x },
+        };
+      }
+    } else {
+      constraint = null;
+    }
+    return { index: i, constraints: [constraint].filter(x => x) };
+  });
+
+  const sources = [
+    {
+      index: canComeFromFallDown,
+      constraints: [fallDownConstraint].filter(x => x),
+    },
+  ].concat(jumpSources);
+
+  return sources;
+};
+
+const solveInstruction = (
+  index: number,
+  constraints: any[],
+  vars: string[],
+  instructions: ExecutableInstruction[]
+): any => {
+  if (constraints.some(c => c.type === 'never')) {
+    return { type: 'impossible', at: index };
+  }
+  const instruction = instructions[index];
+
+  let newConstraints: any[] = [];
+
+  if (instruction.type === 'jnz') {
+    // no effect on constraints
+    newConstraints = constraints;
+  } else if (instruction.type === 'sub') {
+    const affectedRegister = instruction.x as string;
+    if (vars.indexOf(affectedRegister) !== -1) {
+      throw new Error(
+        `Don't know how to handle sub on affected var ${affectedRegister} yet`
+      );
+    }
+    newConstraints = constraints.map(c => {
+      if (c.type === 'isZero' || c.type == 'isNotZero') {
+        const expression = c.expression;
+        if (expression.type === 'valueOf') {
+          return {
+            ...c,
+            expression: {
+              type: 'subtract',
+              aExpression: { type: 'valueOf', register: expression.register },
+              bExpression:
+                typeof instruction.y === 'number'
+                  ? { type: 'literal', value: instruction.y }
+                  : { type: 'valueOf', register: instruction.y },
+            },
+          };
+        } else {
+          throw new Error(
+            `Don't know how to handle sub on affected expression type ${
+              expression.type
+            } yet`
+          );
+        }
+      } else {
+        throw new Error(
+          `Don't know how to handle sub on affected constraint type ${
+            c.type
+          } yet`
+        );
+      }
+    });
+  } else {
+    console.log(JSON.stringify(constraints, null, 2), vars, index);
+    throw new Error(`Don't know how to handle "${instruction.type}" yet`);
+  }
+
+  const sources = getPossibleSources(index, instructions);
+
+  const results = _.flatten(
+    sources.map(source =>
+      solveInstruction(
+        source.index,
+        [...newConstraints, ...source.constraints],
+        vars,
+        instructions
+      )
+    )
+  );
+  return results;
+};
+
 const runTests = async () => {
   const PUZZLE_INPUT = parseProgram(
     readLines('./day23input.txt', {
@@ -321,6 +471,8 @@ const runTests = async () => {
   // });
 
   // never mind, this is the wrong approach. Gonna try to implement loop detection in the interpreter itself
+  const result = solveProgram(PUZZLE_INPUT);
+  console.log(result);
 
   // test('Part Two answer', equalResult(await runProgram(PUZZLE_INPUT), 0));
 };
