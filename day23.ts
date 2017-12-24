@@ -3,7 +3,11 @@ import * as inquirer from 'inquirer';
 import { readLines } from './util';
 import test, { equalResult } from './test';
 
-// Mostly just copied and simplified the code from Day 18
+// For Part One, mostly just copied and simplified the code from Day 18
+// For Part Two... I had to give up. This is beyond me. At first I tried stepping through the program and trying to identify
+// the loops manually, but there were too many to keep track of and they were nested. Then I tried to build a constraint solver,
+// which I had never done before (and I'm sure it shows!)... and it determined that the output was 0. By then I had spent
+// over 6 hours on the problem and had to cut my losses.
 
 type Value = string | number;
 type SideEffect =
