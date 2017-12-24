@@ -236,10 +236,16 @@ const solveProgram = (instructions: ExecutableInstruction[]) => {
   const sources = getPossibleSources(exitIndex, instructions);
 
   const solutions = sources.map(s =>
-    solveInstruction(s.index, s.constraints, vars, instructions, 0)
+    solveInstruction(
+      s.index,
+      s.constraints,
+      [{ type: 'valueOf', register: 'h' }],
+      instructions,
+      0
+    )
   );
 
-  console.log(solutions);
+  console.log(JSON.stringify(solutions, null, 2));
 };
 
 const getPossibleSources = (
@@ -446,18 +452,20 @@ const simplifyExpression = (
 const logThru = (prefix: string, x: any) =>
   console.log(prefix, JSON.stringify(x, null, 2)) || x;
 
-const MAX_DEPTH = 100;
+const MAX_DEPTH = 50;
 
 const solveInstruction = (
   index: number,
   constraints: Constraint[],
-  vars: string[],
+  vars: ConstraintExpression[],
   instructions: ExecutableInstruction[],
   depth: number
 ): any => {
   constraints = constraints
     .map(simplifyConstraint)
     .filter(x => x) as Constraint[];
+
+  vars = vars.map(simplifyExpression);
 
   if (constraints.some(c => c.type === 'never')) {
     return { type: 'impossible', at: index };
@@ -468,7 +476,7 @@ const solveInstruction = (
   }
 
   // We're at the start!
-  if (index < 0) {
+  if (index < 0 || vars.every(v => v.type === 'literal')) {
     const registers: { [key: string]: number } = {
       a: 1,
       b: 0,
@@ -505,48 +513,61 @@ const solveInstruction = (
       .map(simplifyConstraint)
       .filter(x => x) as Constraint[];
 
+    const finalVars = vars
+      .map(v =>
+        Object.keys(registers).reduce(
+          (prev, k) =>
+            deeplyReplaceExpression(prev, k, () => ({
+              type: 'literal',
+              value: registers[k],
+            })),
+          v
+        )
+      )
+      .map(simplifyExpression);
+
     console.log('Reached the start!');
     if (finalConstraints.some(c => c.type === 'never')) {
       console.log('... but it was an invalid state');
       return { type: 'impossible', at: index };
     } else {
-      console.log('Reached the start!');
-      return { type: 'huzzah' };
+      return { type: 'solved', vars: finalVars };
     }
   }
 
   const instruction = instructions[index];
 
-  let newConstraints: Constraint[] = [];
+  let newConstraints: Constraint[];
+  let newVars: ConstraintExpression[];
 
   if (instruction.type === 'jnz') {
     // no effect on constraints
     newConstraints = constraints;
+    newVars = vars;
   } else if (instruction.type === 'sub') {
     const affectedRegister = instruction.x as string;
-    if (vars.indexOf(affectedRegister) !== -1) {
-      // TODO: handle vars
-      // console.log(JSON.stringify(constraints, null, 2), vars, index);
-      // throw new Error(
-      //   `Don't know how to handle sub on affected var ${affectedRegister} yet`
-      // );
-    }
+    const yValue = instruction.y as string | number;
+    const subExpression = (
+      prevExpression: ConstraintExpression
+    ): ConstraintExpression => ({
+      type: 'subtract',
+      aExpression: prevExpression,
+      bExpression:
+        typeof yValue === 'number'
+          ? { type: 'literal', value: yValue }
+          : { type: 'valueOf', register: yValue },
+    });
+    newVars = vars.map(v =>
+      deeplyReplaceExpression(v, affectedRegister, subExpression)
+    );
     newConstraints = constraints.map(c => {
-      const yValue = instruction.y as string | number;
       if (c.type === 'isZero' || c.type == 'isNotZero') {
         return {
           ...c,
           expression: deeplyReplaceExpression(
             c.expression,
             affectedRegister,
-            prevExpression => ({
-              type: 'subtract',
-              aExpression: prevExpression,
-              bExpression:
-                typeof yValue === 'number'
-                  ? { type: 'literal', value: yValue }
-                  : { type: 'valueOf', register: yValue },
-            })
+            subExpression
           ),
         };
       } else {
@@ -560,11 +581,13 @@ const solveInstruction = (
   } else if (instruction.type === 'set') {
     const affectedRegister = instruction.x as string;
     // TODO: handle vars
-    // if (vars.indexOf(affectedRegister) !== -1) {
-    //   throw new Error(
-    //     `Don't know how to handle set on affected var ${affectedRegister} yet`
-    //   );
-    // }
+    const setExpression = (): ConstraintExpression =>
+      typeof yValue === 'number'
+        ? { type: 'literal', value: yValue }
+        : { type: 'valueOf', register: yValue };
+    newVars = vars.map(v =>
+      deeplyReplaceExpression(v, affectedRegister, setExpression)
+    );
     const yValue = instruction.y as string | number;
     newConstraints = constraints.map(c => {
       if (c.type === 'isZero' || c.type == 'isNotZero') {
@@ -573,10 +596,7 @@ const solveInstruction = (
           expression: deeplyReplaceExpression(
             c.expression,
             affectedRegister,
-            () =>
-              typeof yValue === 'number'
-                ? { type: 'literal', value: yValue }
-                : { type: 'valueOf', register: yValue }
+            setExpression
           ),
         };
       } else {
@@ -590,13 +610,19 @@ const solveInstruction = (
   } else if (instruction.type === 'mul') {
     const affectedRegister = instruction.x as string;
     const yValue = instruction.y as string | number;
-    if (vars.indexOf(affectedRegister) !== -1) {
-      // TODO: handle vars
-      // console.log(JSON.stringify(constraints, null, 2), vars, index);
-      // throw new Error(
-      //   `Don't know how to handle mul on affected var ${affectedRegister} yet`
-      // );
-    }
+    const mulExpression = (
+      prevExpression: ConstraintExpression
+    ): ConstraintExpression => ({
+      type: 'multiply',
+      aExpression: prevExpression,
+      bExpression:
+        typeof yValue === 'number'
+          ? { type: 'literal', value: yValue }
+          : { type: 'valueOf', register: yValue },
+    });
+    newVars = vars.map(v =>
+      deeplyReplaceExpression(v, affectedRegister, mulExpression)
+    );
     newConstraints = constraints.map(c => {
       if (c.type === 'isZero' || c.type == 'isNotZero') {
         return {
@@ -604,14 +630,7 @@ const solveInstruction = (
           expression: deeplyReplaceExpression(
             c.expression,
             affectedRegister,
-            prevExpression => ({
-              type: 'multiply',
-              aExpression: prevExpression,
-              bExpression:
-                typeof yValue === 'number'
-                  ? { type: 'literal', value: yValue }
-                  : { type: 'valueOf', register: yValue },
-            })
+            mulExpression
           ),
         };
       } else {
@@ -629,18 +648,22 @@ const solveInstruction = (
 
   const sources = getPossibleSources(index, instructions);
 
-  const results = _.flatten(
-    sources.map(source =>
-      solveInstruction(
-        source.index,
-        [...newConstraints, ...source.constraints],
-        vars,
-        instructions,
-        depth + 1
-      )
-    )
-  );
-  return results;
+  let lastResult;
+  for (const source of sources) {
+    const result = solveInstruction(
+      source.index,
+      [...newConstraints, ...source.constraints],
+      newVars,
+      instructions,
+      depth + 1
+    );
+    lastResult = result;
+    if (result.type === 'solved') {
+      return result;
+    }
+  }
+
+  return lastResult;
 };
 
 const runTests = async () => {
