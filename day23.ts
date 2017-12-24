@@ -236,7 +236,7 @@ const solveProgram = (instructions: ExecutableInstruction[]) => {
   const sources = getPossibleSources(exitIndex, instructions);
 
   const solutions = sources.map(s =>
-    solveInstruction(s.index, s.constraints, vars, instructions)
+    solveInstruction(s.index, s.constraints, vars, instructions, 0)
   );
 
   console.log(solutions);
@@ -446,11 +446,14 @@ const simplifyExpression = (
 const logThru = (prefix: string, x: any) =>
   console.log(prefix, JSON.stringify(x, null, 2)) || x;
 
+const MAX_DEPTH = 100;
+
 const solveInstruction = (
   index: number,
   constraints: Constraint[],
   vars: string[],
-  instructions: ExecutableInstruction[]
+  instructions: ExecutableInstruction[],
+  depth: number
 ): any => {
   constraints = constraints
     .map(simplifyConstraint)
@@ -458,6 +461,10 @@ const solveInstruction = (
 
   if (constraints.some(c => c.type === 'never')) {
     return { type: 'impossible', at: index };
+  }
+
+  if (depth > MAX_DEPTH) {
+    return { type: 'timeout', at: depth };
   }
 
   // We're at the start!
@@ -503,7 +510,8 @@ const solveInstruction = (
       console.log('... but it was an invalid state');
       return { type: 'impossible', at: index };
     } else {
-      throw new Error('Reached the start!');
+      console.log('Reached the start!');
+      return { type: 'huzzah' };
     }
   }
 
@@ -627,7 +635,8 @@ const solveInstruction = (
         source.index,
         [...newConstraints, ...source.constraints],
         vars,
-        instructions
+        instructions,
+        depth + 1
       )
     )
   );
