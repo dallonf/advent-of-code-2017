@@ -2,12 +2,15 @@ import * as _ from 'lodash';
 import * as inquirer from 'inquirer';
 import { readLines } from './util';
 import test, { equalResult } from './test';
+import { writeFile, writeFileSync } from 'fs';
 
 // For Part One, mostly just copied and simplified the code from Day 18
 // For Part Two... I had to give up. This is beyond me. At first I tried stepping through the program and trying to identify
 // the loops manually, but there were too many to keep track of and they were nested. Then I tried to build a constraint solver,
 // which I had never done before (and I'm sure it shows!)... and it determined that the output was 0. By then I had spent
 // over 6 hours on the problem and had to cut my losses.
+// In retrospect, a constraint solver was a dumb idea. All it did was take a bunch of loops that were impractical to execute...
+// and then added
 
 type Value = string | number;
 type SideEffect =
@@ -29,6 +32,7 @@ interface ExecutableInstruction {
 
 type Constraint =
   | { type: 'never' }
+  | { type: 'always' }
   | { type: 'isZero'; expression: ConstraintExpression }
   | { type: 'isNotZero'; expression: ConstraintExpression };
 type ConstraintExpression =
@@ -245,11 +249,11 @@ const solveProgram = (instructions: ExecutableInstruction[]) => {
       s.constraints,
       [{ type: 'valueOf', register: 'h' }],
       instructions,
-      0
+      []
     )
   );
 
-  console.log(JSON.stringify(solutions, null, 2));
+  writeFileSync('./day23testoutput.txt', JSON.stringify(solutions, null, 2));
 };
 
 const getPossibleSources = (
@@ -270,13 +274,13 @@ const getPossibleSources = (
     canComeFromFallDown < 0
       ? { type: 'begin', line: -1, index: -1, x: -1 }
       : instructions[canComeFromFallDown];
-  let fallDownConstraint: Constraint | null;
+  let fallDownConstraint: Constraint;
   if (fallDownInstruction.type === 'jnz') {
     if (typeof fallDownInstruction.x === 'number') {
       if (fallDownInstruction.x !== 0) {
         fallDownConstraint = { type: 'never' };
       } else {
-        fallDownConstraint = null;
+        fallDownConstraint = { type: 'always' };
       }
     } else if (typeof fallDownInstruction.x === 'string') {
       fallDownConstraint = {
@@ -287,18 +291,18 @@ const getPossibleSources = (
       throw new Error(`Instruction ${canComeFromFallDown} is weird`);
     }
   } else {
-    fallDownConstraint = null;
+    fallDownConstraint = { type: 'always' };
   }
 
   const jumpSources = canComeFromJump.map(i => {
     const instruction = instructions[i];
-    let constraint: Constraint | null;
+    let constraint: Constraint;
     if (instruction.type === 'jnz') {
       if (typeof instruction.x === 'number') {
         if (instruction.x === 0) {
           constraint = { type: 'never' };
         } else {
-          constraint = null;
+          constraint = { type: 'always' };
         }
       } else if (typeof instruction.x === 'string') {
         constraint = {
@@ -309,18 +313,18 @@ const getPossibleSources = (
         throw new Error(`Instruction ${i} is weird`);
       }
     } else {
-      constraint = null;
+      constraint = { type: 'always' };
     }
     return {
       index: i,
-      constraints: [constraint].filter(x => x) as Constraint[],
+      constraints: [constraint] as Constraint[],
     };
   });
 
   const sources = [
     {
       index: canComeFromFallDown,
-      constraints: [fallDownConstraint].filter(x => x) as Constraint[],
+      constraints: [fallDownConstraint] as Constraint[],
     },
   ].concat(jumpSources);
 
@@ -377,14 +381,14 @@ const deeplyReplaceExpression = (
   }
 };
 
-const simplifyConstraint = (constraint: Constraint): Constraint | null => {
+const simplifyConstraint = (constraint: Constraint): Constraint => {
   if (constraint.type === 'never') {
     return constraint;
   } else if (constraint.type === 'isZero') {
     const simplifiedExpression = simplifyExpression(constraint.expression);
     if (simplifiedExpression.type === 'literal') {
       if (simplifiedExpression.value === 0) {
-        return null;
+        return { type: 'always' };
       } else {
         return { type: 'never' };
       }
@@ -397,11 +401,13 @@ const simplifyConstraint = (constraint: Constraint): Constraint | null => {
       if (simplifiedExpression.value === 0) {
         return { type: 'never' };
       } else {
-        return null;
+        return { type: 'always' };
       }
     } else {
       return { type: 'isNotZero', expression: simplifiedExpression };
     }
+  } else if (constraint.type === 'always') {
+    return constraint;
   } else {
     throw new Error(`Constraint ${JSON.stringify(constraint)} is weird`);
   }
@@ -416,7 +422,7 @@ const simplifyExpression = (
     return expression;
   } else if (expression.type === 'multiply' || expression.type === 'subtract') {
     const simplifiedA = simplifyExpression(expression.aExpression);
-    const simplifiedB = simplifyExpression(expression.aExpression);
+    const simplifiedB = simplifyExpression(expression.bExpression);
     if (simplifiedA.type === 'literal' && simplifiedB.type === 'literal') {
       if (expression.type === 'multiply') {
         return {
@@ -463,11 +469,20 @@ const solveInstruction = (
   constraints: Constraint[],
   vars: ConstraintExpression[],
   instructions: ExecutableInstruction[],
-  depth: number
+  depth: {
+    index: number;
+    constraints: Constraint[];
+    vars: ConstraintExpression[];
+  }[]
 ): any => {
+  const newDepth = depth.concat({
+    index: index + 1,
+    vars: vars,
+    constraints: constraints,
+  });
   constraints = constraints
     .map(simplifyConstraint)
-    .filter(x => x) as Constraint[];
+    .filter(c => c.type !== 'always');
 
   vars = vars.map(simplifyExpression);
 
@@ -475,7 +490,7 @@ const solveInstruction = (
     return { type: 'impossible', at: index };
   }
 
-  if (depth > MAX_DEPTH) {
+  if (depth.length > MAX_DEPTH) {
     return { type: 'timeout', at: depth };
   }
 
@@ -506,6 +521,9 @@ const solveInstruction = (
               c.expression
             ),
           };
+        } else if (c.type === 'always') {
+          // no-op
+          return c;
         } else {
           throw new Error(
             `Don't know how to handle begin on affected constraint type ${
@@ -535,7 +553,13 @@ const solveInstruction = (
       console.log('... but it was an invalid state');
       return { type: 'impossible', at: index };
     } else {
-      return { type: 'solved', vars: finalVars };
+      const result = {
+        type: 'solved',
+        // finalConstraints,
+        vars: finalVars,
+        // depth,
+      };
+      return result;
     }
   }
 
@@ -574,6 +598,9 @@ const solveInstruction = (
             subExpression
           ),
         };
+      } else if (c.type === 'always') {
+        // no-op
+        return c;
       } else {
         throw new Error(
           `Don't know how to handle sub on affected constraint type ${
@@ -603,6 +630,9 @@ const solveInstruction = (
             setExpression
           ),
         };
+      } else if (c.type === 'always') {
+        // no-op
+        return c;
       } else {
         throw new Error(
           `Don't know how to handle set on affected constraint type ${
@@ -637,6 +667,9 @@ const solveInstruction = (
             mulExpression
           ),
         };
+      } else if (c.type === 'always') {
+        // no-op
+        return c;
       } else {
         throw new Error(
           `Don't know how to handle mul on affected constraint type ${
@@ -659,7 +692,7 @@ const solveInstruction = (
       [...newConstraints, ...source.constraints],
       newVars,
       instructions,
-      depth + 1
+      newDepth
     );
     lastResult = result;
     if (result.type === 'solved') {
@@ -779,9 +812,11 @@ const runTests = async () => {
   //   },
   // });
 
-  // never mind, this is the wrong approach. Gonna try to implement loop detection in the interpreter itself
-  const result = solveProgram(PUZZLE_INPUT);
-  console.log(result);
+  // never mind, this is the wrong approach. Gonna try to implement a constraint solver
+  // ... which was ALSO a dumb idea, it only made the computational complexity worse
+
+  // const result = solveProgram(PUZZLE_INPUT);
+  // console.log(result);
 
   // test('Part Two answer', equalResult(await runProgram(PUZZLE_INPUT), 0));
 };
