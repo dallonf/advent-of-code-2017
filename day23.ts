@@ -23,6 +23,9 @@ interface ExecutableInstruction {
   y?: Value;
 }
 
+type Constraint = any;
+type ConstraintExpression = any;
+
 const INSTRUCTION_FNS = {
   set: ((input, registers) => {
     if (typeof input.x !== 'string')
@@ -238,7 +241,7 @@ const getPossibleSources = (
     .map(i => i.index);
 
   const fallDownInstruction = instructions[canComeFromFallDown];
-  let fallDownConstraint: any;
+  let fallDownConstraint: Constraint;
   if (fallDownInstruction.type === 'jnz') {
     if (typeof fallDownInstruction.x === 'number') {
       if (fallDownInstruction.x !== 0) {
@@ -258,7 +261,7 @@ const getPossibleSources = (
 
   const jumpSources = canComeFromJump.map(i => {
     const instruction = instructions[i];
-    let constraint: any;
+    let constraint: Constraint;
     if (instruction.type === 'jnz') {
       if (typeof instruction.x === 'number') {
         if (instruction.x === 0) {
@@ -288,9 +291,48 @@ const getPossibleSources = (
   return sources;
 };
 
+const deeplyReplaceExpression = (
+  expression: ConstraintExpression,
+  affectedRegister: string,
+  replaceWith: (input: ConstraintExpression) => ConstraintExpression
+): ConstraintExpression => {
+  if (expression.type === 'valueOf') {
+    if (expression.register === affectedRegister) {
+      return replaceWith(expression);
+    } else {
+      return expression;
+    }
+  } else if (expression.type === 'literal') {
+    return expression;
+  } else if (expression.type === 'subtract') {
+    return {
+      type: 'subtract',
+      aExpression: deeplyReplaceExpression(
+        expression.aExpression,
+        affectedRegister,
+        replaceWith
+      ),
+      bExpression: deeplyReplaceExpression(
+        expression.bExpression,
+        affectedRegister,
+        replaceWith
+      ),
+    };
+  } else {
+    throw new Error(
+      `Don't know how to deeplyReplace on expression type ${
+        expression.type
+      } yet`
+    );
+  }
+};
+
+const logThru = (prefix: string, x: any) =>
+  console.log(prefix, JSON.stringify(x, null, 2)) || x;
+
 const solveInstruction = (
   index: number,
-  constraints: any[],
+  constraints: Constraint[],
   vars: string[],
   instructions: ExecutableInstruction[]
 ): any => {
@@ -299,7 +341,7 @@ const solveInstruction = (
   }
   const instruction = instructions[index];
 
-  let newConstraints: any[] = [];
+  let newConstraints: Constraint[] = [];
 
   if (instruction.type === 'jnz') {
     // no effect on constraints
@@ -307,35 +349,61 @@ const solveInstruction = (
   } else if (instruction.type === 'sub') {
     const affectedRegister = instruction.x as string;
     if (vars.indexOf(affectedRegister) !== -1) {
-      throw new Error(
-        `Don't know how to handle sub on affected var ${affectedRegister} yet`
-      );
+      // TODO: handle vars
+      // console.log(JSON.stringify(constraints, null, 2), vars, index);
+      // throw new Error(
+      //   `Don't know how to handle sub on affected var ${affectedRegister} yet`
+      // );
     }
     newConstraints = constraints.map(c => {
       if (c.type === 'isZero' || c.type == 'isNotZero') {
-        const expression = c.expression;
-        if (expression.type === 'valueOf') {
-          return {
-            ...c,
-            expression: {
+        return {
+          ...c,
+          expression: deeplyReplaceExpression(
+            c.expression,
+            affectedRegister,
+            prevExpression => ({
               type: 'subtract',
-              aExpression: { type: 'valueOf', register: expression.register },
+              aExpression: prevExpression,
               bExpression:
                 typeof instruction.y === 'number'
                   ? { type: 'literal', value: instruction.y }
                   : { type: 'valueOf', register: instruction.y },
-            },
-          };
-        } else {
-          throw new Error(
-            `Don't know how to handle sub on affected expression type ${
-              expression.type
-            } yet`
-          );
-        }
+            })
+          ),
+        };
       } else {
         throw new Error(
           `Don't know how to handle sub on affected constraint type ${
+            c.type
+          } yet`
+        );
+      }
+    });
+  } else if (instruction.type === 'set') {
+    const affectedRegister = instruction.x as string;
+    // TODO: handle vars
+    // if (vars.indexOf(affectedRegister) !== -1) {
+    //   throw new Error(
+    //     `Don't know how to handle set on affected var ${affectedRegister} yet`
+    //   );
+    // }
+    newConstraints = constraints.map(c => {
+      if (c.type === 'isZero' || c.type == 'isNotZero') {
+        return {
+          ...c,
+          expression: deeplyReplaceExpression(
+            c.expression,
+            affectedRegister,
+            () =>
+              typeof instruction.y === 'number'
+                ? { type: 'literal', value: instruction.y }
+                : { type: 'valueOf', register: instruction.y }
+          ),
+        };
+      } else {
+        throw new Error(
+          `Don't know how to handle set on affected constraint type ${
             c.type
           } yet`
         );
