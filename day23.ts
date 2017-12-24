@@ -27,6 +27,7 @@ type Constraint = any;
 type ConstraintExpression = any;
 
 const INSTRUCTION_FNS = {
+  begin: (() => ({ type: 'noop' })) as InstructionFn,
   set: ((input, registers) => {
     if (typeof input.x !== 'string')
       throw new Error(
@@ -240,7 +241,10 @@ const getPossibleSources = (
     )
     .map(i => i.index);
 
-  const fallDownInstruction = instructions[canComeFromFallDown];
+  const fallDownInstruction: ExecutableInstruction =
+    canComeFromFallDown < 0
+      ? { type: 'begin', line: -1, index: -1, x: -1 }
+      : instructions[canComeFromFallDown];
   let fallDownConstraint: Constraint;
   if (fallDownInstruction.type === 'jnz') {
     if (typeof fallDownInstruction.x === 'number') {
@@ -304,9 +308,9 @@ const deeplyReplaceExpression = (
     }
   } else if (expression.type === 'literal') {
     return expression;
-  } else if (expression.type === 'subtract') {
+  } else if (expression.type === 'subtract' || expression.type === 'multiply') {
     return {
-      type: 'subtract',
+      type: expression.type,
       aExpression: deeplyReplaceExpression(
         expression.aExpression,
         affectedRegister,
@@ -327,6 +331,9 @@ const deeplyReplaceExpression = (
   }
 };
 
+// const simplifyConstraint = (constraint: Constraint) => {
+// }
+
 const logThru = (prefix: string, x: any) =>
   console.log(prefix, JSON.stringify(x, null, 2)) || x;
 
@@ -339,6 +346,14 @@ const solveInstruction = (
   if (constraints.some(c => c.type === 'never')) {
     return { type: 'impossible', at: index };
   }
+
+  // We're at the start!
+  if (index < 0) {
+    console.log(JSON.stringify(constraints, null, 2));
+    throw new Error('Reached the start!');
+    // return constraints;
+  }
+
   const instruction = instructions[index];
 
   let newConstraints: Constraint[] = [];
@@ -404,6 +419,40 @@ const solveInstruction = (
       } else {
         throw new Error(
           `Don't know how to handle set on affected constraint type ${
+            c.type
+          } yet`
+        );
+      }
+    });
+  } else if (instruction.type === 'mul') {
+    const affectedRegister = instruction.x as string;
+    if (vars.indexOf(affectedRegister) !== -1) {
+      // TODO: handle vars
+      // console.log(JSON.stringify(constraints, null, 2), vars, index);
+      // throw new Error(
+      //   `Don't know how to handle mul on affected var ${affectedRegister} yet`
+      // );
+    }
+    newConstraints = constraints.map(c => {
+      if (c.type === 'isZero' || c.type == 'isNotZero') {
+        return {
+          ...c,
+          expression: deeplyReplaceExpression(
+            c.expression,
+            affectedRegister,
+            prevExpression => ({
+              type: 'multiply',
+              aExpression: prevExpression,
+              bExpression:
+                typeof instruction.y === 'number'
+                  ? { type: 'literal', value: instruction.y }
+                  : { type: 'valueOf', register: instruction.y },
+            })
+          ),
+        };
+      } else {
+        throw new Error(
+          `Don't know how to handle mul on affected constraint type ${
             c.type
           } yet`
         );
