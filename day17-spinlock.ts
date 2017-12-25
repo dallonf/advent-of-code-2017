@@ -1,5 +1,7 @@
 import test, { simpleTest, equalResult } from './test';
 
+console.log('Day 17: Spinlock');
+
 const spinLock = (
   iterations: number,
   steps: number

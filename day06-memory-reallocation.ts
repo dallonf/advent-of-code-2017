@@ -1,5 +1,7 @@
 import test, { equalResult, simpleTest } from './test';
 
+console.log('Day 6: Memory Reallocation');
+
 const hashState = (banks: number[]) => banks.map(n => n.toString()).join('-');
 
 const redistribute = (banks: number[]) => {

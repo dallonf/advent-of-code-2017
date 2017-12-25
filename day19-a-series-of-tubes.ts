@@ -1,6 +1,8 @@
 import test, { simpleTest, equalResult } from './test';
 import { readLines } from './util';
 
+console.log('Day 19: A Series of Tubes');
+
 type GridCell =
   | { type: 'empty' }
   | { type: 'pipe'; direction: 'vertical' | 'horizontal' }

@@ -2,6 +2,8 @@ import * as _ from 'lodash';
 import test, { simpleTest, equalResult } from './test';
 const now = require('performance-now');
 
+console.log('Day 15: Dueling Generators');
+
 const GENERATOR_A_FACTOR = 16807;
 const GENERATOR_B_FACTOR = 48271;
 const GENERATOR_A_MULTIPLE = 4;

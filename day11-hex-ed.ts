@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import test, { simpleTest, equalResult } from './test';
 
+console.log('Day 11: Hex Ed');
+
 type Location = { x: number; y: number };
 const HEX_STEPS = {
   n: { y: -2 } as Partial<Location>,

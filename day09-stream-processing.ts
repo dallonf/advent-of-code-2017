@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import test, { equalResult, simpleTest } from './test';
 
+console.log('Day 9: Stream Processing');
+
 const scoreStream = (input: string) =>
   parseStream(input, parseGroup, {
     parentScore: 0,

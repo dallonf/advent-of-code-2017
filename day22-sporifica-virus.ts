@@ -2,6 +2,8 @@ import test, { simpleTest, equalResult } from './test';
 import * as _ from 'lodash';
 import { OS_EOL, readLines } from './util';
 
+console.log('Day 22: Sporifica Virus');
+
 // This one is kind of sloppy because I didn't have a lot of time
 
 enum NodeState {

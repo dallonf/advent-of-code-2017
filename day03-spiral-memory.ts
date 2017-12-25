@@ -1,5 +1,7 @@
 import test, { simpleTest, equalResult } from './test';
 
+console.log('Day 3: Spiral Memory');
+
 enum Direction {
   UP,
   DOWN,

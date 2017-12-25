@@ -1,5 +1,7 @@
 import test, { simpleTest, equalResult } from './test';
 
+console.log('Day 2: Corruption Checksum');
+
 const parseInput = (input: string) =>
   input
     .split('\n')
