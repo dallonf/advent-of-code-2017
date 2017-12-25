@@ -14,6 +14,9 @@ interface LayerState extends LayerDefinition {
 
 type LayerStateArray = (LayerState | undefined)[];
 
+// Idea for future refactoring: mathematically determine the position of a scanner based on the current tick,
+// rather than simulating them all on every tick.
+
 const parseLine = (input: string): LayerDefinition => {
   const match = input.match(/^([0-9]+): ([0-9]+)$/);
   if (!match) throw new Error(`Unexpected format of input line "${input}"`);

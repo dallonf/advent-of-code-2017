@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import test, { simpleTest, equalResult } from './test';
 import { hexToBinary } from './util';
-import { hash2 } from './day10';
+import { hash2 } from './day10-knot-hash';
 
 type Grid = boolean[][];
 
