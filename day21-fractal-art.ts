@@ -170,6 +170,6 @@ test(
 console.log('Part Two');
 
 test(
-  'Part One answer',
-  equalResult(pixelsOnAfterIterations(puzzleRules, 18), 190)
+  'Part Two answer',
+  equalResult(pixelsOnAfterIterations(puzzleRules, 18), 2335049)
 );
