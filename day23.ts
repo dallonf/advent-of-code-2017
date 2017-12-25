@@ -10,7 +10,15 @@ import { writeFile, writeFileSync } from 'fs';
 // which I had never done before (and I'm sure it shows!)... and it determined that the output was 0. By then I had spent
 // over 6 hours on the problem and had to cut my losses.
 // In retrospect, a constraint solver was a dumb idea. All it did was take a bunch of loops that were impractical to execute...
-// and then added
+// and then added exponentially complex loops on top of that.
+
+// Final solution, with some help from reddit. I saw some talk about "composite numbers", as well as,
+// particularly inspiring, a flowchart of what I assume was the assembly (I didn't look close enough to
+// see any detail, but enough that I wanted to make a flowchart of my own; attached).
+// This gave me enough information to build a flowchart of my own and try to optimize it. Sure enough,
+// I saw several groupings of instructions that could be thought of as functions.
+// Another user mentioned an off-by-one error - if I hadn't seen that, I probably would have given up entirely at the end
+// when my answer still wasn't right X_X
 
 type Value = string | number;
 type SideEffect =
@@ -725,6 +733,25 @@ const solveInstruction = (
   return lastResult;
 };
 
+const isPrime = (number: number) => {
+  for (let i = 2; i < number; i++) {
+    if (number % i == 0) return false;
+  }
+  return true;
+};
+
+const betterProgram = (start: number, end: number) => {
+  let nonPrimeCount = 0;
+  let currentNumber = start - 17;
+  while (currentNumber !== end) {
+    currentNumber += 17;
+    if (!isPrime(currentNumber)) {
+      nonPrimeCount += 1;
+    }
+  }
+  return nonPrimeCount;
+};
+
 const runTests = async () => {
   const PUZZLE_INPUT = parseProgram(
     readLines('./day23input.txt', {
@@ -750,25 +777,10 @@ const runTests = async () => {
     })
   );
 
-  await executeInstructions(OPTIMIZED_INPUT, {
-    autoBreakOn: 'all',
-    initialRegisterEntries: { a: 0 },
-  });
-
-  // Template skip
-  // executeInstructions(OPTIMIZED_INPUT, {
-  //     autoBreakOn: 'all',
-  //     initialInstruction: 19,
-  //     initialRegisterEntries: {
-  //       a: 1,
-  //       b: 107900,
-  //       c: 124900,
-  //       f: 1,
-  //       d: 2,
-  //       e: 107900,
-  //       g: 0,
-  //     },
-  //   });
+  // await executeInstructions(OPTIMIZED_INPUT, {
+  //   autoBreakOn: 'all',
+  //   initialRegisterEntries: { a: 1 },
+  // });
 
   // First skip
   // await executeInstructions(OPTIMIZED_INPUT, {
@@ -854,7 +866,8 @@ const runTests = async () => {
   // const result = solveProgram(PUZZLE_INPUT);
   // console.log(result);
 
-  // test('Part Two answer', equalResult(await runProgram(PUZZLE_INPUT), 0));
+  test('betterProgram', equalResult(betterProgram(79, 79), 0));
+  test('Part Two answer', equalResult(betterProgram(107900, 124900), 907));
 };
 
 runTests();
