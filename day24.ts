@@ -1,6 +1,7 @@
 import * as _ from 'lodash';
 import test, { simpleTest, equalResult } from './test';
 import { OS_EOL, readLines } from './util';
+const now = require('performance-now');
 
 interface Component {
   id: number;
@@ -25,7 +26,10 @@ const bridgeStrength = (bridge: Component[]) =>
   bridge.map(c => c.portA + c.portB).reduce((a, b) => a + b);
 
 const buildStrongestBridge = (components: Component[]) => {
+  components = _.sortBy(components, c => -(c.portA + c.portB));
+
   let maxStrength = 0;
+  let _possibilitiesTested = 0;
   const queue: BridgeComponent[][] = [[]];
 
   while (queue.length) {
@@ -42,34 +46,10 @@ const buildStrongestBridge = (components: Component[]) => {
       openPort = 0;
     }
 
-    const possiblePortMap = new Map<number, number>([[openPort, 1]]);
     // Don't allow using any components already in use
-    const availableComponents = components
-      .filter(c => {
-        return currentBridgeInProgress.findIndex(bc => bc.id === c.id) === -1;
-      })
-      .map(c => {
-        // Do a quick pass over the partset to keep track of which ports are available
-        possiblePortMap.set(c.portA, (possiblePortMap.get(c.portA) || 0) + 1);
-        possiblePortMap.set(c.portB, (possiblePortMap.get(c.portB) || 0) + 1);
-        return c;
-      })
-      // Make sure that every part has at least one port that's available for use
-      .filter(
-        c =>
-          possiblePortMap.get(c.portA)! >= 2 ||
-          possiblePortMap.get(c.portB)! >= 2
-      );
-
-    const maximumPossibleStrength = bridgeStrength([
-      ...currentBridgeInProgress,
-      ...availableComponents,
-    ]);
-    if (maximumPossibleStrength <= maxStrength) {
-      // If you couldn't exceed the best bridge seen so far, even if you were somehow able to
-      // use every single component in the list, then don't even bother continuing to crawl the graph
-      continue;
-    }
+    const availableComponents = components.filter(c => {
+      return currentBridgeInProgress.findIndex(bc => bc.id === c.id) === -1;
+    });
 
     const supportedParts = availableComponents
       .filter(c => c.portA === openPort || c.portB === openPort)
@@ -81,8 +61,11 @@ const buildStrongestBridge = (components: Component[]) => {
       if (strength > maxStrength) {
         maxStrength = strength;
       }
+      _possibilitiesTested += 1;
       queue.push(bridge);
     });
+
+    console.log('possibilities tested', _possibilitiesTested);
   }
 
   return maxStrength;
@@ -104,8 +87,7 @@ const EXAMPLE_INPUT = `
 
 const PUZZLE_INPUT = readLines('./day24input.txt').map(parseComponent);
 const SMALLER_PUZZLE_INPUT = PUZZLE_INPUT.slice(
-  0,
-  Math.floor(PUZZLE_INPUT.length * (3 / 4))
+  Math.floor(PUZZLE_INPUT.length * 0.5)
 );
 
 console.log('Part One');
@@ -123,9 +105,9 @@ test(
   'buildStrongestBridge',
   equalResult(buildStrongestBridge(EXAMPLE_INPUT), 31)
 );
-test(
-  'performance testing',
-  equalResult(buildStrongestBridge(SMALLER_PUZZLE_INPUT), 0)
-);
+
+// console.log('begin performance testing');
+// buildStrongestBridge(PUZZLE_INPUT);
+// console.log('end performance testing');
 
 // test('Part One answer', equalResult(buildStrongestBridge(PUZZLE_INPUT), 0));
