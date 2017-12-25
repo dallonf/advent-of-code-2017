@@ -4,6 +4,8 @@ import test, { simpleTest, equalResult } from './test';
 import { equal } from 'assert';
 import { readLines } from './util';
 
+console.log('Day 4: High-Entropy Passphrases');
+
 const validPassphrase1 = (input: string) => {
   const words = input.split(' ');
   const usedWords = new Map<string, boolean>();
@@ -30,7 +32,7 @@ const countValidPassphrases = (
   validPassphase: (input: string) => boolean
 ) => passphrases.filter(validPassphase).length;
 
-const puzzleInput = readLines('./day4input.txt');
+const puzzleInput = readLines('./day04input.txt');
 
 console.log('Part One');
 simpleTest(validPassphrase1, 'aa bb cc dd ee', true);

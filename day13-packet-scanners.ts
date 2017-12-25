@@ -2,6 +2,8 @@ import test, { equalResult } from './test';
 import * as _ from 'lodash';
 import { OS_EOL, readLines } from './util';
 
+console.log('Day 13: Packet Scanners');
+
 interface LayerDefinition {
   depth: number;
   range: number;

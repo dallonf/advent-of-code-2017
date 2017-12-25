@@ -1,6 +1,8 @@
 import test, { simpleTest, equalResult } from './test';
 import { readLines } from './util';
 
+console.log('Day 5: A Maze of Twisty Trampolines, All Alike');
+
 const jumpEscape1 = (offsets: number[]) => {
   const mutableOffsets = [...offsets];
   let cursor = 0,
@@ -27,7 +29,7 @@ const jumpEscape2 = (offsets: number[]) => {
   return steps;
 };
 
-const puzzleInput = readLines('./day5input.txt').map(line =>
+const puzzleInput = readLines('./day05input.txt').map(line =>
   parseInt(line, 10)
 );
 

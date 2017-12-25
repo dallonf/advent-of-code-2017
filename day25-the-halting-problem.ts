@@ -1,6 +1,8 @@
 import test, { equalResult } from './test';
 import { EXAMPLE_INPUT, Input, PUZZLE_INPUT } from './day25input';
 
+console.log('Day 25: The Halting Problem');
+
 const runToChecksum = (input: Input) => {
   const tape = new Map<number, boolean>();
   let cursor = 0;

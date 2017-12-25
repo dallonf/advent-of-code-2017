@@ -1,6 +1,8 @@
 import test, { simpleTest, equalResult } from './test';
 import { OS_EOL, readLines } from './util';
 
+console.log('Day 18: Duet');
+
 type Value = string | number;
 type SideEffect =
   | { type: 'playSound'; frequency: number }

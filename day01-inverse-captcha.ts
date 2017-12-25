@@ -1,13 +1,13 @@
 import test, { simpleTest } from './test';
 
+console.log('Day 1: Inverse Captcha');
+
 const parseDigits = (input: string) =>
   [...input].map((digitStr, i) => {
     const digit = parseInt(digitStr, 10);
     if (Number.isNaN(digit)) {
       throw new Error(
-        `Non-numeric character "${digitStr}" at index ${i} of input string "${
-          input
-        }"`
+        `Non-numeric character "${digitStr}" at index ${i} of input string "${input}"`
       );
     }
     return digit;

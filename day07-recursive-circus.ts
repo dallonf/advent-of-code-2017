@@ -4,6 +4,8 @@ import { EOL } from 'os';
 import { readLines } from './util';
 import { currentId } from 'async_hooks';
 
+console.log('Day 7: Recursive Circus)');
+
 interface Node {
   name: string;
   weight: number;

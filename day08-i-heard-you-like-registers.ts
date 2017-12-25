@@ -1,6 +1,8 @@
 import test, { simpleTest, equalResult } from './test';
 import { OS_EOL, readLines } from './util';
 
+console.log('Day 8: I Heard You Like Registers');
+
 type CommandFn = (registerVal: number, parameter: number) => number;
 const COMMAND_FNS = {
   increment: ((a, b) => a + b) as CommandFn,

@@ -2,6 +2,8 @@ import test, { simpleTest, equalResult } from './test';
 import * as _ from 'lodash';
 import { readLines } from './util';
 
+console.log('Day 16: Permutation Promenade');
+
 const DANCERS = _.range(16).map(i => String.fromCharCode(97 + i));
 
 interface SpinMove {

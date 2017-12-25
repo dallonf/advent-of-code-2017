@@ -2,6 +2,8 @@ import * as _ from 'lodash';
 import test, { simpleTest, equalResult } from './test';
 import { OS_EOL, readLines } from './util';
 
+console.log('Day 24: Electromagnetic Moat');
+
 // I tried a lot of strategies for this one.
 //
 // * Brute force: worked but takes a long time

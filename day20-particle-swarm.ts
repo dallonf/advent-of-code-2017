@@ -2,6 +2,8 @@ import test, { simpleTest, equalResult } from './test';
 import * as _ from 'lodash';
 import { OS_EOL, readLines } from './util';
 
+console.log('Day 20: Particle Swarm');
+
 interface Vector3 {
   x: number;
   y: number;

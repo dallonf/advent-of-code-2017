@@ -2,6 +2,8 @@ import * as _ from 'lodash';
 import test, { equalResult } from './test';
 import { OS_EOL, readLines } from './util';
 
+console.log('Day 21: Fractal Art');
+
 type Grid = boolean[][];
 interface Rule {
   sourceRule: string;

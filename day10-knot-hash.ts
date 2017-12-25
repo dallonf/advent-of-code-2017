@@ -1,6 +1,8 @@
 import test, { simpleTest, equalResult } from './test';
 import * as _ from 'lodash';
 
+console.log('Day 10: Knot Hash');
+
 const hash1 = ({ list, lengths }: { list: number[]; lengths: number[] }) => {
   let cursor = 0;
   let skipSize = 0;

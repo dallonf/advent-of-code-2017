@@ -3,6 +3,8 @@ import test, { simpleTest, equalResult } from './test';
 import { hexToBinary } from './util';
 import { hash2 } from './day10-knot-hash';
 
+console.log('Day 14: Disk Defragmentation');
+
 type Grid = boolean[][];
 
 const LENGTH = 128;

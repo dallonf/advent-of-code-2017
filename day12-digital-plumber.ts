@@ -1,6 +1,8 @@
 import test, { simpleTest, equalResult } from './test';
 import { OS_EOL, readLines } from './util';
 
+console.log('Day 12: Digital Plumber');
+
 interface Program {
   id: number;
   pipes: number[];
