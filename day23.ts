@@ -154,6 +154,7 @@ const executeInstructions = async (
   } = {}
 ) => {
   let breakpoint: number | null = null;
+  let breakValue: [string, number] | null = null;
   const registers = new Map<string, number>(_.toPairs(initialRegisterEntries));
   const instructionsCalled = new Map<string, number>();
   for (let i = initialInstruction; i < instructions.length; i++) {
@@ -163,43 +164,64 @@ const executeInstructions = async (
       (instructionsCalled.get(currentInstruction.type) || 0) + 1
     );
     if (
-      i === breakpoint ||
-      (breakpoint == null &&
-        (autoBreakOn === 'all' ||
-          (autoBreakOn === 'jnz' && currentInstruction.type === 'jnz')))
+      (i === breakpoint ||
+        (breakpoint == null &&
+          (autoBreakOn === 'all' ||
+            (autoBreakOn === 'jnz' && currentInstruction.type === 'jnz')))) &&
+      (breakValue == null ||
+        (registers.get(breakValue[0]) || 0) === breakValue[1])
     ) {
       breakpoint = null;
+      breakValue = null;
       console.log('Registers', registers);
       console.log(debugLine(currentInstruction, i));
       const result = await inquirer.prompt({
         name: 'continue',
         message:
-          'Continue? (n to exit, number to continue until instruction #, prefix with l to continue until line #)',
+          'Continue? (n to exit, number to continue until instruction #, prefix with l to continue until line #, <register>=value to wait)',
       });
       let enteredBreakpoint: number;
       if (result['continue'] === 'n') {
         process.exit(0);
-      } else if (
-        (enteredBreakpoint = parseInt(result['continue'], 10)) &&
-        !Number.isNaN(enteredBreakpoint)
-      ) {
-        console.log(`Setting breakpoint for instruction ${enteredBreakpoint}`);
-        breakpoint = enteredBreakpoint;
-      } else if (
-        result['continue'].startsWith('l') &&
-        (enteredBreakpoint = parseInt(result['continue'].slice(1), 10)) &&
-        !Number.isNaN(enteredBreakpoint)
-      ) {
-        const foundBreakpoint = instructions.findIndex(
-          i => i.line === enteredBreakpoint
-        );
-        if (foundBreakpoint === -1) {
-          console.log(`Error: no instruction at line #${enteredBreakpoint}`);
-        } else {
-          console.log(
-            `Setting breakpoint for line #${enteredBreakpoint} (instruction ${foundBreakpoint})`
-          );
-          breakpoint = foundBreakpoint;
+      } else {
+        const REGEX = /^(?:(l?[0-9]+)@?)?(?:([a-h])=(-?[0-9]+))?$/;
+        const match = (result['continue'] as string).match(REGEX);
+        if (match) {
+          const lineBreakpoint = match[1];
+          const registerBreakpoint = match[2];
+          const registerValueBreakpoint = match[3];
+
+          if (lineBreakpoint) {
+            if (lineBreakpoint.startsWith('l')) {
+              const foundBreakpoint = instructions.findIndex(
+                i => i.line === parseInt(lineBreakpoint.slice(1), 10)
+              );
+              if (foundBreakpoint === -1) {
+                console.log(`Error: no instruction at line #${lineBreakpoint}`);
+              } else {
+                console.log(
+                  `Setting breakpoint for line #${lineBreakpoint.slice(
+                    1
+                  )} (instruction ${foundBreakpoint})`
+                );
+                breakpoint = foundBreakpoint;
+              }
+            } else {
+              breakpoint = parseInt(lineBreakpoint, 10);
+              console.log(
+                `Setting breakpoint for instruction ${lineBreakpoint}`
+              );
+            }
+          }
+          if (registerBreakpoint && registerValueBreakpoint) {
+            breakValue = [
+              registerBreakpoint,
+              parseInt(registerValueBreakpoint, 10),
+            ];
+            console.log(
+              `Setting value breakpoint for ${breakValue[0]}=${breakValue[1]}`
+            );
+          }
         }
       }
       console.log();
@@ -728,11 +750,25 @@ const runTests = async () => {
     })
   );
 
-  // Setup
-  // await executeInstructions(OPTIMIZED_INPUT, {
-  //   autoBreakOn: 'none',
-  //   initialRegisterEntries: { a: 1 },
-  // });
+  await executeInstructions(OPTIMIZED_INPUT, {
+    autoBreakOn: 'all',
+    initialRegisterEntries: { a: 0 },
+  });
+
+  // Template skip
+  // executeInstructions(OPTIMIZED_INPUT, {
+  //     autoBreakOn: 'all',
+  //     initialInstruction: 19,
+  //     initialRegisterEntries: {
+  //       a: 1,
+  //       b: 107900,
+  //       c: 124900,
+  //       f: 1,
+  //       d: 2,
+  //       e: 107900,
+  //       g: 0,
+  //     },
+  //   });
 
   // First skip
   // await executeInstructions(OPTIMIZED_INPUT, {
