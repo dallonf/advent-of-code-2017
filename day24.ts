@@ -2,6 +2,16 @@ import * as _ from 'lodash';
 import test, { simpleTest, equalResult } from './test';
 import { OS_EOL, readLines } from './util';
 
+// I tried a lot of strategies for this one.
+//
+// * Brute force: worked but takes a long time
+// * Do a depth-first search, and don't keep crawling the graph if you couldn't exceed the best bridge seen so far, even if you hypothetically connected every remaining piece in the graph (excluding orphaned pieces): didn't actually exclude any possibilities.
+// * Just find the best single piece at every step: returned a very suboptimal answer
+// * Find the best combination of N pieces at a time, then lock it in and find the next combination: returned a suboptimal answer. To my surprise, increasing N didn't seem to be correlated with a more optimal solution.
+
+// Wound up just going with brute force. It didn't take THAT long. /shrug
+// It's an NP-hard problem and I just can't think of any heuristics that would help (and still provide the most optimal solution)
+
 interface Component {
   id: number;
   portA: number;
@@ -27,6 +37,16 @@ const bridgeStrength = (bridge: BridgeComponent[]) =>
 const buildStrongestBridge = (components: Component[]) => {
   const allBridges = buildBridges([], components);
   return _.max(allBridges.map(bridgeStrength));
+};
+
+const buildLongestBridge = (components: Component[]) => {
+  const allBridges = buildBridges([], components);
+  const sortedBridges = _.sortBy(
+    allBridges,
+    b => b.length,
+    b => bridgeStrength(b)
+  );
+  return bridgeStrength(sortedBridges[sortedBridges.length - 1]);
 };
 
 const buildBridges = (
@@ -93,4 +113,10 @@ test(
   equalResult(buildStrongestBridge(EXAMPLE_INPUT), 31)
 );
 
-test('Part One answer', equalResult(buildStrongestBridge(PUZZLE_INPUT), 0));
+test('Part One answer', equalResult(buildStrongestBridge(PUZZLE_INPUT), 1868));
+
+console.log('Part Two');
+
+test('buildLongestBridge', equalResult(buildLongestBridge(EXAMPLE_INPUT), 19));
+
+test('Part Two answer', equalResult(buildLongestBridge(PUZZLE_INPUT), 1841));
