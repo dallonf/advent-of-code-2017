@@ -25,15 +25,27 @@ const parseComponent = (line: string, id: number): Component => {
 const bridgeStrength = (bridge: Component[]) =>
   bridge.map(c => c.portA + c.portB).reduce((a, b) => a + b);
 
+const printComponent = (component: BridgeComponent | Component) => {
+  if ((component as BridgeComponent).reversed) {
+    return `${component.portB}/${component.portA}`;
+  } else {
+    return `${component.portA}/${component.portB}`;
+  }
+};
+
+const CHUNK_SIZE = 2;
 const buildStrongestBridge = (components: Component[]) => {
   components = _.sortBy(components, c => -(c.portA + c.portB));
 
   let maxStrength = 0;
+  let bestChunk: BridgeComponent[] | undefined;
   let _possibilitiesTested = 0;
+  let locked: BridgeComponent[] = [];
   const queue: BridgeComponent[][] = [[]];
 
   while (queue.length) {
-    const currentBridgeInProgress = queue.shift()!;
+    const currentChunkInProgress = queue.shift()!;
+    const currentBridgeInProgress = [...locked, ...currentChunkInProgress];
 
     let openPort: number;
     if (currentBridgeInProgress.length) {
@@ -56,16 +68,28 @@ const buildStrongestBridge = (components: Component[]) => {
       .map(c => ({ ...c, reversed: c.portA !== openPort }));
 
     supportedParts.forEach(part => {
-      const bridge = [...currentBridgeInProgress, part];
-      const strength = bridgeStrength(bridge);
+      const newChunk = [...currentChunkInProgress, part];
+      // const bridge = [...currentBridgeInProgress, part];
+      const strength = bridgeStrength([...currentBridgeInProgress, part]);
       if (strength > maxStrength) {
         maxStrength = strength;
+        bestChunk = newChunk;
+      }
+      if (newChunk.length < CHUNK_SIZE) {
+        queue.push(newChunk);
       }
       _possibilitiesTested += 1;
-      queue.push(bridge);
     });
 
-    console.log('possibilities tested', _possibilitiesTested);
+    // If we've tested every possible chunk, then lock in the best one
+    // and start building the next chunk
+    if (!queue.length && bestChunk) {
+      locked = locked.concat(bestChunk);
+      bestChunk = undefined;
+      queue.push([]);
+    }
+
+    // console.log('possibilities tested', _possibilitiesTested);
   }
 
   return maxStrength;
@@ -110,4 +134,4 @@ test(
 // buildStrongestBridge(PUZZLE_INPUT);
 // console.log('end performance testing');
 
-// test('Part One answer', equalResult(buildStrongestBridge(PUZZLE_INPUT), 0));
+test('Part One answer', equalResult(buildStrongestBridge(PUZZLE_INPUT), 0));
