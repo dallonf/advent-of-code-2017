@@ -4,8 +4,6 @@ import { readLines } from './util';
 import test, { equalResult } from './test';
 import { writeFile, writeFileSync } from 'fs';
 
-console.log('Day 23: Coprocessor Conflagration');
-
 // For Part One, mostly just copied and simplified the code from Day 18
 // For Part Two... I had to give up. This is beyond me. At first I tried stepping through the program and trying to identify
 // the loops manually, but there were too many to keep track of and they were nested. Then I tried to build a constraint solver,
@@ -755,6 +753,8 @@ const betterProgram = (start: number, end: number) => {
 };
 
 const runTests = async () => {
+  console.log('Day 23: Coprocessor Conflagration');
+
   const PUZZLE_INPUT = parseProgram(
     readLines('./day23input.txt', {
       filterNulls: false,
