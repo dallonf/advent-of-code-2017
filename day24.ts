@@ -25,40 +25,44 @@ const bridgeStrength = (bridge: BridgeComponent[]) =>
   bridge.map(c => c.portA + c.portB).reduce((a, b) => a + b);
 
 const buildStrongestBridge = (components: Component[]) => {
-  const allBridges = buildBridges([], components);
-  return _.max(allBridges.map(bridgeStrength));
-};
+  let maxStrength = 0;
+  const queue: BridgeComponent[][] = [[]];
 
-const buildBridges = (
-  bridge: BridgeComponent[],
-  availableComponents: Component[]
-): BridgeComponent[][] => {
-  let openPort: number;
-  if (bridge.length) {
-    const lastComponent = bridge[bridge.length - 1];
-    openPort = lastComponent.reversed
-      ? lastComponent.portA
-      : lastComponent.portB;
-  } else {
-    openPort = 0;
-  }
+  while (queue.length) {
+    const currentBridgeInProgress = queue.shift()!;
 
-  const supportedParts = availableComponents
-    .filter(c => c.portA === openPort || c.portB === openPort)
-    .map(c => ({ ...c, reversed: c.portA !== openPort }));
+    let openPort: number;
+    if (currentBridgeInProgress.length) {
+      const lastComponent =
+        currentBridgeInProgress[currentBridgeInProgress.length - 1];
+      openPort = lastComponent.reversed
+        ? lastComponent.portA
+        : lastComponent.portB;
+    } else {
+      openPort = 0;
+    }
 
-  if (supportedParts.length === 0) {
-    return [bridge];
-  } else {
-    return _.flatten(
-      supportedParts.map(bc =>
-        buildBridges(
-          [...bridge, bc],
-          availableComponents.filter(c => c.id != bc.id)
-        )
-      )
+    // Don't allow using any components already in use
+    const availableComponents = components.filter(c =>
+      currentBridgeInProgress.findIndex(bc => bc.id === c.id)
     );
+
+    const supportedParts = availableComponents
+      .filter(c => c.portA === openPort || c.portB === openPort)
+      .map(c => ({ ...c, reversed: c.portA !== openPort }));
+
+    supportedParts.forEach(part => {
+      const bridge = [...currentBridgeInProgress, part];
+      const strength = bridgeStrength(bridge);
+      if (strength > maxStrength) {
+        maxStrength = strength;
+      }
+      queue.push(bridge);
+    });
+    break;
   }
+
+  return maxStrength;
 };
 
 const EXAMPLE_INPUT = `
