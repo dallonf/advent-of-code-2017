@@ -20,6 +20,6 @@ import './day19-a-series-of-tubes';
 import './day20-particle-swarm';
 import './day21-fractal-art';
 import './day22-sporifica-virus';
-import './day23-coprocessor-conflagaration';
+import './day23-coprocessor-conflagration';
 import './day24-electromagnetic-moat';
 import './day25-the-halting-problem';
