@@ -21,7 +21,7 @@ const parseComponent = (line: string, id: number): Component => {
   };
 };
 
-const bridgeStrength = (bridge: BridgeComponent[]) =>
+const bridgeStrength = (bridge: Component[]) =>
   bridge.map(c => c.portA + c.portB).reduce((a, b) => a + b);
 
 const buildStrongestBridge = (components: Component[]) => {
@@ -42,10 +42,34 @@ const buildStrongestBridge = (components: Component[]) => {
       openPort = 0;
     }
 
+    const possiblePortMap = new Map<number, number>([[openPort, 1]]);
     // Don't allow using any components already in use
-    const availableComponents = components.filter(c =>
-      currentBridgeInProgress.findIndex(bc => bc.id === c.id)
-    );
+    const availableComponents = components
+      .filter(c => {
+        return currentBridgeInProgress.findIndex(bc => bc.id === c.id) === -1;
+      })
+      .map(c => {
+        // Do a quick pass over the partset to keep track of which ports are available
+        possiblePortMap.set(c.portA, (possiblePortMap.get(c.portA) || 0) + 1);
+        possiblePortMap.set(c.portB, (possiblePortMap.get(c.portB) || 0) + 1);
+        return c;
+      })
+      // Make sure that every part has at least one port that's available for use
+      .filter(
+        c =>
+          possiblePortMap.get(c.portA)! >= 2 ||
+          possiblePortMap.get(c.portB)! >= 2
+      );
+
+    const maximumPossibleStrength = bridgeStrength([
+      ...currentBridgeInProgress,
+      ...availableComponents,
+    ]);
+    if (maximumPossibleStrength <= maxStrength) {
+      // If you couldn't exceed the best bridge seen so far, even if you were somehow able to
+      // use every single component in the list, then don't even bother continuing to crawl the graph
+      continue;
+    }
 
     const supportedParts = availableComponents
       .filter(c => c.portA === openPort || c.portB === openPort)
@@ -59,7 +83,6 @@ const buildStrongestBridge = (components: Component[]) => {
       }
       queue.push(bridge);
     });
-    break;
   }
 
   return maxStrength;
@@ -80,6 +103,10 @@ const EXAMPLE_INPUT = `
   .map(parseComponent);
 
 const PUZZLE_INPUT = readLines('./day24input.txt').map(parseComponent);
+const SMALLER_PUZZLE_INPUT = PUZZLE_INPUT.slice(
+  0,
+  Math.floor(PUZZLE_INPUT.length * (3 / 4))
+);
 
 console.log('Part One');
 simpleTest(
@@ -96,5 +123,9 @@ test(
   'buildStrongestBridge',
   equalResult(buildStrongestBridge(EXAMPLE_INPUT), 31)
 );
+test(
+  'performance testing',
+  equalResult(buildStrongestBridge(SMALLER_PUZZLE_INPUT), 0)
+);
 
-test('Part One answer', equalResult(buildStrongestBridge(PUZZLE_INPUT), 0));
+// test('Part One answer', equalResult(buildStrongestBridge(PUZZLE_INPUT), 0));
