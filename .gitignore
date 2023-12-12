@@ -1,3 +1,4 @@
 node_modules
 *.js
 day23testoutput.txt
+day*input.txt
